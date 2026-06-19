@@ -102,6 +102,7 @@
             width: 100%;
             height: 100%;
             background: black;
+            position: relative;
         }
 
         .fullscreen-image {
@@ -109,6 +110,28 @@
             height: 100%;
             object-fit: cover;
             display: block;
+        }
+
+        /* Bottom-Right Fullscreen Control Toggle */
+        .fullscreen-toggle-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s ease;
+        }
+
+        .fullscreen-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
         }
 
         /* Hidden Preloader */
@@ -135,15 +158,15 @@
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image">
         <img id="preloadImg" src="" class="hidden-preloader" alt="preloader">
+        
+        <button class="fullscreen-toggle-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
 
     <script>
-        // Prank image file name
         const pngMemes = [
             "1781893487984.png"
         ];
 
-        // FIXED: Pointing directly to your local file name
         const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
@@ -208,10 +231,8 @@
             const imageElement = document.getElementById('memeImg');
             const preloadElement = document.getElementById('preloadImg');
 
-            // Set your local background image instantly
             imageElement.src = defaultImage;
 
-            // Cache the prank asset into browser memory
             if (pngMemes.length > 0) {
                 preloadElement.src = pngMemes[0];
             }
@@ -225,6 +246,17 @@
                     imageElement.src = defaultImage;
                 }
             });
+        }
+
+        // --- FULLSCREEN LOGIC ---
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
         }
     </script>
 
