@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
+    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -12,8 +13,6 @@
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
         }
 
         html, body {
@@ -54,11 +53,6 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: transform 0.1s ease;
-        }
-
-        .role-btn:active {
-            transform: scale(0.98);
         }
 
         .master-btn { background-color: #ff4500; color: white; }
@@ -87,11 +81,6 @@
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
             -webkit-user-drag: none;
-            transition: background 0.1s ease;
-        }
-
-        .prank-btn:active {
-            background: #b33000;
         }
 
         .status-text {
@@ -116,7 +105,6 @@
             -webkit-user-drag: none;
         }
 
-        /* Bottom-Right Fullscreen Control Toggle */
         .fullscreen-toggle-btn {
             position: absolute;
             bottom: 20px;
@@ -129,16 +117,8 @@
             border-radius: 20px;
             cursor: pointer;
             z-index: 100;
-            backdrop-filter: blur(5px);
-            transition: all 0.2s ease;
         }
 
-        .fullscreen-toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-        }
-
-        /* Hidden Preloader Container */
         #preloaderContainer {
             display: none;
         }
@@ -161,9 +141,7 @@
 
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
-        
         <div id="preloaderContainer"></div>
-        
         <button class="fullscreen-toggle-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
 
@@ -177,18 +155,13 @@
 
         let validImagesFound = ["1.png"]; 
         let currentPrankImage = null;
-        let backupResetTimeout = null; // Safety system tracker
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
-            
             room = drone.subscribe(roomName);
 
             room.on('open', error => {
-                if (error) {
-                    alert("Scaledrone Room Error: " + error);
-                    return;
-                }
+                if (error) return alert("Scaledrone Error: " + error);
                 
                 if (role === 'master') {
                     setupMaster();
@@ -196,10 +169,6 @@
                     setupSlave();
                 }
             });
-
-            // Re-authenticate silently if laptop browser goes to sleep or drops frames
-            drone.on('disconnect', () => console.log("Lost connection, reconnecting..."));
-            drone.on('reconnect', () => console.log("Reconnected safely."));
         }
 
         // --- HOST CONTROLLER SYSTEM ---
@@ -207,9 +176,10 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
+            // Receive image pool updates from client displays
             room.on('message', message => {
                 if (message.data.action === 'SYNC_LIST') {
-                    validImagesFound = [...new Set([...validImagesFound, ...message.data.list])];
+                    validImagesFound = message.data.list;
                 }
             });
 
@@ -232,11 +202,11 @@
                 });
             };
 
-            // Double down on laptop window-level tracking so mouse slips don't jam the system
+            // Bulletproof Mouse Listeners (tied to window so if mouse leaves button it still lets go)
             prankBtn.addEventListener('mousedown', startPrank);
-            window.addEventListener('mouseup', stopPrank); 
-            prankBtn.addEventListener('mouseleave', stopPrank);
+            window.addEventListener('mouseup', stopPrank);
             
+            // Touch Device Listeners
             prankBtn.addEventListener('touchstart', startPrank, { passive: false });
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
@@ -246,33 +216,21 @@
         function setupSlave() {
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
-
             imageElement.src = defaultImage;
 
+            // Scan files immediately
             scanAndRefreshAssets();
 
-            setInterval(() => {
-                scanAndRefreshAssets();
-            }, 60000);
+            // Rescan folder every 60 seconds silently
+            setInterval(scanAndRefreshAssets, 60000);
 
             room.on('message', message => {
                 const data = message.data;
                 
                 if (data.action === 'TRIGGER') {
-                    clearTimeout(backupResetTimeout); // Wipe old countdown timers
-                    
                     currentPrankImage = data.img;
                     imageElement.src = currentPrankImage;
-
-                    // DEAD MAN'S SWITCH: Force clear the prank after 4 seconds if a network error blocks your controller's release signal
-                    backupResetTimeout = setTimeout(() => {
-                        console.log("Safety protocol triggered: Forcing image reset.");
-                        currentPrankImage = null;
-                        imageElement.src = defaultImage + "?t=" + new Date().getTime();
-                    }, 4000);
-
                 } else if (data.action === 'RESET') {
-                    clearTimeout(backupResetTimeout);
                     currentPrankImage = null;
                     imageElement.src = defaultImage + "?t=" + new Date().getTime();
                 }
@@ -314,11 +272,13 @@
                     discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
                     validImagesFound = discoveredList;
 
+                    // Send the scanned image pool up to the network room
                     drone.publish({
                         room: roomName,
                         message: { action: 'SYNC_LIST', list: validImagesFound }
                     });
 
+                    // Keep the background current if not currently active
                     if (!currentPrankImage) {
                         imageElement.src = defaultImage + timestamp;
                     }
@@ -326,17 +286,13 @@
             }
         }
 
-        // --- FULLSCREEN LOGIC ---
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`Error attempting to enable full-screen mode: ${err.message}`);
-                });
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
             } else {
                 document.exitFullscreen();
             }
         }
     </script>
-
 </body>
 </html>
