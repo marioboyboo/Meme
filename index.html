@@ -60,7 +60,7 @@
         .master-btn { background-color: #ff4500; color: white; }
         .slave-btn { background-color: #00ffcc; color: #121212; }
 
-        /* Host/Master Panel */
+        /* Host Panel */
         .master-panel {
             display: none;
             width: 100%;
@@ -96,7 +96,7 @@
             color: #888;
         }
 
-        /* Display/Slave View */
+        /* Display View */
         .slave-view {
             display: none;
             width: 100%;
@@ -111,7 +111,7 @@
             display: block;
         }
 
-        /* Hidden Preloader Element */
+        /* Hidden Preloader */
         .hidden-preloader {
             display: none;
         }
@@ -138,13 +138,13 @@
     </div>
 
     <script>
-        // Your prank image file name
+        // Prank image file name
         const pngMemes = [
             "1781893487984.png"
         ];
 
-        // Updated to a high-availability, direct CDN image link to guarantee loading
-        const defaultImage = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1920&auto=format&fit=crop";
+        // FIXED: Pointing directly to your local file name
+        const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
@@ -191,12 +191,10 @@
                 });
             };
 
-            // Desktop Control
             prankBtn.addEventListener('mousedown', startPrank);
             prankBtn.addEventListener('mouseup', stopPrank);
             prankBtn.addEventListener('mouseleave', stopPrank);
             
-            // Mobile Control
             prankBtn.addEventListener('touchstart', (e) => { 
                 e.preventDefault(); 
                 startPrank(); 
@@ -210,10 +208,10 @@
             const imageElement = document.getElementById('memeImg');
             const preloadElement = document.getElementById('preloadImg');
 
-            // Set background scene immediately
+            // Set your local background image instantly
             imageElement.src = defaultImage;
 
-            // Cache the prank asset into browser memory seamlessly
+            // Cache the prank asset into browser memory
             if (pngMemes.length > 0) {
                 preloadElement.src = pngMemes[0];
             }
@@ -222,7 +220,6 @@
                 const data = message.data;
                 
                 if (data.action === 'TRIGGER') {
-                    // Pulls cleanly from cache instantly
                     imageElement.src = data.img;
                 } else if (data.action === 'RESET') {
                     imageElement.src = defaultImage;
