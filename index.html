@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MemeVault - Random Fullscreen</title>
+    <title>MemeVault - Remote Control</title>
+    <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -14,8 +15,96 @@
         html, body {
             width: 100%;
             height: 100%;
-            background-color: #000000;
+            background-color: #121212;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
             overflow: hidden;
+        }
+
+        /* --- Setup Menu Styles --- */
+        .setup-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .setup-screen h1 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+            letter-spacing: 1px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .role-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        .master-btn { background-color: #ff4500; color: white; }
+        .master-btn:hover { background-color: #e03d00; }
+        .slave-btn { background-color: #00ffcc; color: #121212; }
+        .slave-btn:hover { background-color: #00cc99; }
+        .role-btn:active { transform: scale(0.95); }
+
+        /* --- Master Panel Styles --- */
+        .master-panel {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #1e1e1e;
+        }
+
+        .prank-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: #ff4500;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background 0.1s, transform 0.05s;
+        }
+
+        .prank-btn:active {
+            background: #b33000;
+            transform: scale(0.95);
+            box-shadow: 0 5px 15px rgba(255, 69, 0, 0.2);
+        }
+
+        .status-text {
+            margin-top: 20px;
+            color: #888;
+            font-size: 1rem;
+        }
+
+        /* --- Slave View Styles --- */
+        .slave-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+            background: black;
         }
 
         .fullscreen-image {
@@ -28,25 +117,108 @@
 </head>
 <body>
 
-    <img id="memeImg" alt="Meme" class="fullscreen-image">
+    <div id="setupScreen" class="setup-screen">
+        <h1>Select View</h1>
+        <div class="btn-group">
+            <button class="role-btn master-btn" onclick="initRole('master')">Master</button>
+            <button class="role-btn slave-btn" onclick="initRole('slave')">Slave</button>
+        </div>
+    </div>
+
+    <div id="masterPanel" class="master-panel">
+        <button id="prankBtn" class="prank-btn">PRANK</button>
+        <p class="status-text">Hold down to trigger the random image on the slave</p>
+    </div>
+
+    <div id="slaveView" class="slave-view">
+        <img id="memeImg" src="Screenshot 2026-06-19 134357.jpg" alt="Display Screen" class="fullscreen-image">
+    </div>
 
     <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            // 📑 ADD YOUR .jpg OR .png FILE NAMES HERE!
-            const memeImages = [
-                "1781893487984.png",
-                "5043.jpg",
-                "warrior_cats_meme.png"
-            ];
+        // 📑 LIST OF PNG MEMES FOR THE PRANK
+        const pngMemes = [
+            "1781893487984.png",
+            "warrior_cats_meme.png"
+        ];
+        const defaultImage = "Screenshot 2026-06-19 134357.jpg";
 
+        // 🔑 SCALEDRONE CONNECTION SETUP
+        // Swap out YOUR_SCALEDRONE_CHANNEL_ID with the one Scaledrone gave you!
+        const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
+        const roomName = 'observable-meme-room';
+        let room;
+
+        drone.on('open', error => {
+            if (error) return console.error(error);
+            console.log('Connected to Scaledrone');
+        });
+
+        function initRole(role) {
+            document.getElementById('setupScreen').style.display = 'none';
+            
+            // Connect to the room so messages can sync back and forth
+            room = drone.subscribe(roomName);
+
+            if (role === 'master') {
+                setupMaster();
+            } else {
+                setupSlave();
+            }
+        }
+
+        // --- MASTER SYSTEM ---
+        function setupMaster() {
+            document.getElementById('masterPanel').style.display = 'flex';
+            const prankBtn = document.getElementById('prankBtn');
+
+            // Trigger prank when pressing down (Mouse and Touch support)
+            const startPrank = () => {
+                // Select a completely random index from your array
+                const randomIndex = Math.floor(Math.random() * pngMemes.length);
+                const randomPng = pngMemes[randomIndex];
+                
+                drone.publish({
+                    room: roomName,
+                    message: { action: 'TRIGGER', img: randomPng }
+                });
+            };
+
+            // Reset when releasing
+            const stopPrank = () => {
+                drone.publish({
+                    room: roomName,
+                    message: { action: 'RESET' }
+                });
+            };
+
+            // PC Mouse Interactions
+            prankBtn.addEventListener('mousedown', startPrank);
+            prankBtn.addEventListener('mouseup', stopPrank);
+            prankBtn.addEventListener('mouseleave', stopPrank);
+
+            // Phone/Tablet Touch Interactions
+            prankBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPrank(); });
+            prankBtn.addEventListener('touchend', stopPrank);
+        }
+
+        // --- SLAVE SYSTEM ---
+        function setupSlave() {
+            document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
 
-            if (memeImages.length > 0) {
-                // Pick a random image from the list
-                const randomIndex = Math.floor(Math.random() * memeImages.length);
-                imageElement.src = memeImages[randomIndex];
-            }
-        });
+            // Listen for signals floating in from the Master controller
+            room.on('message', message => {
+                const data = message.data;
+                
+                if (data.action === 'TRIGGER') {
+                    // Instantly switch to the random PNG chosen by the master
+                    imageElement.src = data.img;
+                } else if (data.action === 'RESET') {
+                    // Snap straight back to the default screenshot layout
+                    imageElement.src = defaultImage;
+                }
+            });
+        }
     </script>
 
 </body>
