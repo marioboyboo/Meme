@@ -134,8 +134,8 @@
             color: #fff;
         }
 
-        /* Hidden Preloader */
-        .hidden-preloader {
+        /* Hidden Preloader Container */
+        #preloaderContainer {
             display: none;
         }
     </style>
@@ -152,21 +152,19 @@
 
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn">PRANK</button>
-        <p class="status-text">Hold down to trigger the image instantly on the display</p>
+        <p class="status-text">Hold down to trigger a random image on the display</p>
     </div>
 
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image">
-        <img id="preloadImg" src="" class="hidden-preloader" alt="preloader">
+        
+        <div id="preloaderContainer"></div>
         
         <button class="fullscreen-toggle-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
 
     <script>
-        const pngMemes = [
-            "1781893487984.png"
-        ];
-
+        const TotalImages = 10; // Easily change this number if you add more later!
         const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
@@ -198,8 +196,9 @@
             const prankBtn = document.getElementById('prankBtn');
 
             const startPrank = () => {
-                const randomIndex = Math.floor(Math.random() * pngMemes.length);
-                const randomPng = pngMemes[randomIndex];
+                // Generates a random number from 1 to TotalImages (1 to 10)
+                const randomNumber = Math.floor(Math.random() * TotalImages) + 1;
+                const randomPng = randomNumber + ".png";
                 
                 drone.publish({
                     room: roomName,
@@ -229,12 +228,15 @@
         function setupSlave() {
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
-            const preloadElement = document.getElementById('preloadImg');
+            const preloaderContainer = document.getElementById('preloaderContainer');
 
             imageElement.src = defaultImage;
 
-            if (pngMemes.length > 0) {
-                preloadElement.src = pngMemes[0];
+            // Loops through and automatically preloads 1.png, 2.png... up to 10.png
+            for (let i = 1; i <= TotalImages; i++) {
+                const imgPreload = new Image();
+                imgPreload.src = i + ".png";
+                preloaderContainer.appendChild(imgPreload);
             }
 
             room.on('message', message => {
