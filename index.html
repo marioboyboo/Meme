@@ -10,7 +10,6 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            /* Prevents the laptop browser from highlighting text or getting stuck in a drag-and-drop state */
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -87,7 +86,6 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
-            /* Double enforcement to kill image/button drag shadows on laptops */
             -webkit-user-drag: none;
             transition: background 0.1s ease;
         }
@@ -179,6 +177,7 @@
 
         let validImagesFound = ["1.png"]; 
         let currentPrankImage = null;
+        let backupResetTimeout = null; // Safety system tracker
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -197,6 +196,10 @@
                     setupSlave();
                 }
             });
+
+            // Re-authenticate silently if laptop browser goes to sleep or drops frames
+            drone.on('disconnect', () => console.log("Lost connection, reconnecting..."));
+            drone.on('reconnect', () => console.log("Reconnected safely."));
         }
 
         // --- HOST CONTROLLER SYSTEM ---
@@ -229,12 +232,11 @@
                 });
             };
 
-            // Desktop Mouse Control (with drag prevention)
+            // Double down on laptop window-level tracking so mouse slips don't jam the system
             prankBtn.addEventListener('mousedown', startPrank);
-            prankBtn.addEventListener('mouseup', stopPrank);
+            window.addEventListener('mouseup', stopPrank); 
             prankBtn.addEventListener('mouseleave', stopPrank);
             
-            // Mobile isolated Touch Control
             prankBtn.addEventListener('touchstart', startPrank, { passive: false });
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
@@ -257,9 +259,20 @@
                 const data = message.data;
                 
                 if (data.action === 'TRIGGER') {
+                    clearTimeout(backupResetTimeout); // Wipe old countdown timers
+                    
                     currentPrankImage = data.img;
                     imageElement.src = currentPrankImage;
+
+                    // DEAD MAN'S SWITCH: Force clear the prank after 4 seconds if a network error blocks your controller's release signal
+                    backupResetTimeout = setTimeout(() => {
+                        console.log("Safety protocol triggered: Forcing image reset.");
+                        currentPrankImage = null;
+                        imageElement.src = defaultImage + "?t=" + new Date().getTime();
+                    }, 4000);
+
                 } else if (data.action === 'RESET') {
+                    clearTimeout(backupResetTimeout);
                     currentPrankImage = null;
                     imageElement.src = defaultImage + "?t=" + new Date().getTime();
                 }
@@ -284,7 +297,6 @@
                     const cacheBusterImg = new Image();
                     cacheBusterImg.src = filename + timestamp;
                     preloaderContainer.appendChild(cacheBusterImg);
-                    
                     checkFinished();
                 };
                 
@@ -299,7 +311,6 @@
                 checksCompleted++;
                 if (checksCompleted === MAX_SCAN_LIMIT) {
                     if (discoveredList.length === 0) discoveredList = ["1.png"];
-                    
                     discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
                     validImagesFound = discoveredList;
 
