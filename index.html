@@ -164,15 +164,14 @@
     </div>
 
     <script>
-        // Max range to scan for newly dropped files. Increase this if you add more than 50 files!
-        const MAX_SCAN_LIMIT = 50; 
+        // UPDATED: Now scans up to 100 files seamlessly in the background
+        const MAX_SCAN_LIMIT = 100; 
         const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
         let room;
 
-        // Tracks only the working images discovered live on the local computer
         let validImagesFound = ["1.png"]; 
         let currentPrankImage = null;
 
@@ -200,7 +199,6 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
-            // Listen for update notifications from the Display Client to sync available photos
             room.on('message', message => {
                 if (message.data.action === 'SYNC_LIST') {
                     validImagesFound = message.data.list;
@@ -208,7 +206,6 @@
             });
 
             const startPrank = () => {
-                // Instantly picks from whatever valid image list exists right now
                 const randomIndex = Math.floor(Math.random() * validImagesFound.length);
                 const randomPng = validImagesFound[randomIndex];
                 
@@ -243,10 +240,9 @@
 
             imageElement.src = defaultImage;
 
-            // Scan folder immediately on launch
             scanAndRefreshAssets();
 
-            // Silently rescans the local folder for new files every 60 seconds completely in the background
+            // Background scanning fires automatically every 60 seconds
             setInterval(() => {
                 scanAndRefreshAssets();
             }, 60000);
@@ -264,7 +260,7 @@
             });
         }
 
-        // Blazing-fast hidden directory lookups to find newly dropped files automatically
+        // Expanded brute-force scan engine covering paths 1.png through 100.png safely
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
@@ -288,7 +284,7 @@
                 };
                 
                 imgCheck.onerror = function() {
-                    checkFinished(); // File doesn't exist yet, skip safely
+                    checkFinished();
                 };
 
                 imgCheck.src = filename + timestamp;
@@ -299,21 +295,18 @@
                 if (checksCompleted === MAX_SCAN_LIMIT) {
                     if (discoveredList.length === 0) discoveredList = ["1.png"];
                     
-                    // Sorting numerically so arrays map sequentially
                     discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
                     validImagesFound = discoveredList;
 
-                    // Push the updated image list out to the Controller instantly
                     drone.publish({
                         room: roomName,
                         message: { action: 'SYNC_LIST', list: validImagesFound }
                     });
 
-                    // Silently clear defaultImage leaks
                     if (!currentPrankImage) {
                         imageElement.src = defaultImage + timestamp;
                     }
-                    console.log("Folder swept. Available image paths tracked successfully:", validImagesFound);
+                    console.log("Scan complete. Live folder tracks matching assets up to 100:", validImagesFound);
                 }
             }
         }
