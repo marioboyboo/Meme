@@ -152,7 +152,7 @@
 
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn">PRANK</button>
-        <p class="status-text">Hold down to trigger a random image on the display</p>
+        <p class="status-text">Hold down to trigger a random image on all displays</p>
     </div>
 
     <div id="slaveView" class="slave-view">
@@ -164,7 +164,6 @@
     </div>
 
     <script>
-        // UPDATED: Now scans up to 100 files seamlessly in the background
         const MAX_SCAN_LIMIT = 100; 
         const defaultImage = "meme.jpg";
 
@@ -199,9 +198,11 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
+            // Sync with any display client that broadcasts its active file list
             room.on('message', message => {
                 if (message.data.action === 'SYNC_LIST') {
-                    validImagesFound = message.data.list;
+                    // Combine lists if multiple clients find different setups, keeping unique items
+                    validImagesFound = [...new Set([...validImagesFound, ...message.data.list])];
                 }
             });
 
@@ -260,7 +261,7 @@
             });
         }
 
-        // Expanded brute-force scan engine covering paths 1.png through 100.png safely
+        // Brute-force scan engine covering paths 1.png through 100.png safely
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
@@ -298,6 +299,7 @@
                     discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
                     validImagesFound = discoveredList;
 
+                    // Tell the controller (and any other client screens) what files are ready to rock
                     drone.publish({
                         room: roomName,
                         message: { action: 'SYNC_LIST', list: validImagesFound }
@@ -306,7 +308,6 @@
                     if (!currentPrankImage) {
                         imageElement.src = defaultImage + timestamp;
                     }
-                    console.log("Scan complete. Live folder tracks matching assets up to 100:", validImagesFound);
                 }
             }
         }
