@@ -164,12 +164,17 @@
     </div>
 
     <script>
-        const TotalImages = 10; // Easily change this number if you add more later!
+        // Max range to scan for newly dropped files. Increase this if you add more than 50 files!
+        const MAX_SCAN_LIMIT = 50; 
         const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
         let room;
+
+        // Tracks only the working images discovered live on the local computer
+        let validImagesFound = ["1.png"]; 
+        let currentPrankImage = null;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -195,10 +200,17 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
+            // Listen for update notifications from the Display Client to sync available photos
+            room.on('message', message => {
+                if (message.data.action === 'SYNC_LIST') {
+                    validImagesFound = message.data.list;
+                }
+            });
+
             const startPrank = () => {
-                // Generates a random number from 1 to TotalImages (1 to 10)
-                const randomNumber = Math.floor(Math.random() * TotalImages) + 1;
-                const randomPng = randomNumber + ".png";
+                // Instantly picks from whatever valid image list exists right now
+                const randomIndex = Math.floor(Math.random() * validImagesFound.length);
+                const randomPng = validImagesFound[randomIndex];
                 
                 drone.publish({
                     room: roomName,
@@ -228,26 +240,82 @@
         function setupSlave() {
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
-            const preloaderContainer = document.getElementById('preloaderContainer');
 
             imageElement.src = defaultImage;
 
-            // Loops through and automatically preloads 1.png, 2.png... up to 10.png
-            for (let i = 1; i <= TotalImages; i++) {
-                const imgPreload = new Image();
-                imgPreload.src = i + ".png";
-                preloaderContainer.appendChild(imgPreload);
-            }
+            // Scan folder immediately on launch
+            scanAndRefreshAssets();
+
+            // Silently rescans the local folder for new files every 60 seconds completely in the background
+            setInterval(() => {
+                scanAndRefreshAssets();
+            }, 60000);
 
             room.on('message', message => {
                 const data = message.data;
                 
                 if (data.action === 'TRIGGER') {
-                    imageElement.src = data.img;
+                    currentPrankImage = data.img;
+                    imageElement.src = currentPrankImage;
                 } else if (data.action === 'RESET') {
-                    imageElement.src = defaultImage;
+                    currentPrankImage = null;
+                    imageElement.src = defaultImage + "?t=" + new Date().getTime();
                 }
             });
+        }
+
+        // Blazing-fast hidden directory lookups to find newly dropped files automatically
+        function scanAndRefreshAssets() {
+            const preloaderContainer = document.getElementById('preloaderContainer');
+            const imageElement = document.getElementById('memeImg');
+            const timestamp = "?t=" + new Date().getTime();
+            
+            preloaderContainer.innerHTML = '';
+            let discoveredList = [];
+            let checksCompleted = 0;
+
+            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
+                const filename = i + ".png";
+                const imgCheck = new Image();
+                
+                imgCheck.onload = function() {
+                    discoveredList.push(filename);
+                    const cacheBusterImg = new Image();
+                    cacheBusterImg.src = filename + timestamp;
+                    preloaderContainer.appendChild(cacheBusterImg);
+                    
+                    checkFinished();
+                };
+                
+                imgCheck.onerror = function() {
+                    checkFinished(); // File doesn't exist yet, skip safely
+                };
+
+                imgCheck.src = filename + timestamp;
+            }
+
+            function checkFinished() {
+                checksCompleted++;
+                if (checksCompleted === MAX_SCAN_LIMIT) {
+                    if (discoveredList.length === 0) discoveredList = ["1.png"];
+                    
+                    // Sorting numerically so arrays map sequentially
+                    discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
+                    validImagesFound = discoveredList;
+
+                    // Push the updated image list out to the Controller instantly
+                    drone.publish({
+                        room: roomName,
+                        message: { action: 'SYNC_LIST', list: validImagesFound }
+                    });
+
+                    // Silently clear defaultImage leaks
+                    if (!currentPrankImage) {
+                        imageElement.src = defaultImage + timestamp;
+                    }
+                    console.log("Folder swept. Available image paths tracked successfully:", validImagesFound);
+                }
+            }
         }
 
         // --- FULLSCREEN LOGIC ---
