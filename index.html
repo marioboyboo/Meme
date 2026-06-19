@@ -123,16 +123,16 @@
     </div>
 
     <div id="slaveView" class="slave-view">
-        <!-- Replaced the image name here to match your exact file -->
-        <img id="memeImg" src="Screenshot 2026-06-19 134404.jpg" alt="Display Screen" class="fullscreen-image">
+        <!-- Default source points to the new clean name -->
+        <img id="memeImg" src="meme.jpg" alt="Display Screen" class="fullscreen-image">
     </div>
 
     <script>
         const pngMemes = [
             "1781893487984.png"
         ];
-        // Updated with the exact, verbatim filename string
-        const defaultImage = "Screenshot 2026-06-19 134404.jpg";
+        // Cleaned up tracking variable
+        const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
@@ -191,7 +191,6 @@
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
 
-            // Force initial string load
             imageElement.src = defaultImage;
 
             room.on('message', message => {
