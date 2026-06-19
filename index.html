@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MemeVault - Remote Control Fixed</title>
-    <!-- Scaledrone Library -->
+    <title>MemeVault - Remote Control</title>
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -51,12 +50,17 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .role-btn:active {
+            transform: scale(0.98);
         }
 
         .master-btn { background-color: #ff4500; color: white; }
         .slave-btn { background-color: #00ffcc; color: #121212; }
 
-        /* Master Panel */
+        /* Host/Master Panel */
         .master-panel {
             display: none;
             width: 100%;
@@ -80,6 +84,7 @@
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
             user-select: none;
             -webkit-user-select: none;
+            transition: background 0.1s ease;
         }
 
         .prank-btn:active {
@@ -91,7 +96,7 @@
             color: #888;
         }
 
-        /* Slave View */
+        /* Display/Slave View */
         .slave-view {
             display: none;
             width: 100%;
@@ -105,6 +110,11 @@
             object-fit: cover;
             display: block;
         }
+
+        /* Hidden Preloader Element */
+        .hidden-preloader {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -112,27 +122,29 @@
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
-            <button class="role-btn master-btn" onclick="initRole('master')">Master</button>
-            <button class="role-btn slave-btn" onclick="initRole('slave')">Slave</button>
+            <button class="role-btn master-btn" onclick="initRole('master')">Host Controller</button>
+            <button class="role-btn slave-btn" onclick="initRole('slave')">Display Client</button>
         </div>
     </div>
 
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn">PRANK</button>
-        <p class="status-text">Hold down to trigger the random image on the slave</p>
+        <p class="status-text">Hold down to trigger the image instantly on the display</p>
     </div>
 
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image">
+        <img id="preloadImg" src="" class="hidden-preloader" alt="preloader">
     </div>
 
     <script>
+        // Your prank image file name
         const pngMemes = [
             "1781893487984.png"
         ];
 
-        // This is a web-hosted version of your exact cat image to guarantee it loads instantly
-        const defaultImage = "https://images.lucidcreative.workers.dev/meme.jpg";
+        // Updated to a high-availability, direct CDN image link to guarantee loading
+        const defaultImage = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1920&auto=format&fit=crop";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
@@ -157,7 +169,7 @@
             });
         }
 
-        // --- MASTER SYSTEM ---
+        // --- HOST CONTROLLER SYSTEM ---
         function setupMaster() {
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
@@ -179,26 +191,39 @@
                 });
             };
 
+            // Desktop Control
             prankBtn.addEventListener('mousedown', startPrank);
             prankBtn.addEventListener('mouseup', stopPrank);
             prankBtn.addEventListener('mouseleave', stopPrank);
-            prankBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPrank(); });
+            
+            // Mobile Control
+            prankBtn.addEventListener('touchstart', (e) => { 
+                e.preventDefault(); 
+                startPrank(); 
+            });
             prankBtn.addEventListener('touchend', stopPrank);
         }
 
-        // --- SLAVE SYSTEM ---
+        // --- DISPLAY CLIENT SYSTEM ---
         function setupSlave() {
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
+            const preloadElement = document.getElementById('preloadImg');
 
-            // Force load the hosted URL version right away
+            // Set background scene immediately
             imageElement.src = defaultImage;
+
+            // Cache the prank asset into browser memory seamlessly
+            if (pngMemes.length > 0) {
+                preloadElement.src = pngMemes[0];
+            }
 
             room.on('message', message => {
                 const data = message.data;
                 
                 if (data.action === 'TRIGGER') {
-                    imageElement.src = data.img + "?t=" + new Date().getTime();
+                    // Pulls cleanly from cache instantly
+                    imageElement.src = data.img;
                 } else if (data.action === 'RESET') {
                     imageElement.src = defaultImage;
                 }
