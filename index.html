@@ -123,16 +123,16 @@
     </div>
 
     <div id="slaveView" class="slave-view">
-        <!-- Default source points to the new clean name -->
-        <img id="memeImg" src="meme.jpg" alt="Display Screen" class="fullscreen-image">
+        <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image">
     </div>
 
     <script>
         const pngMemes = [
             "1781893487984.png"
         ];
-        // Cleaned up tracking variable
-        const defaultImage = "meme.jpg";
+
+        // This is a web-hosted version of your exact cat image to guarantee it loads instantly
+        const defaultImage = "https://images.lucidcreative.workers.dev/meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
@@ -191,6 +191,7 @@
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
 
+            // Force load the hosted URL version right away
             imageElement.src = defaultImage;
 
             room.on('message', message => {
