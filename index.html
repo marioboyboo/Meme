@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control Fixed</title>
+    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -122,15 +123,16 @@
     </div>
 
     <div id="slaveView" class="slave-view">
-        <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image">
+        <!-- Replaced the image name here to match your exact file -->
+        <img id="memeImg" src="Screenshot 2026-06-19 134404.jpg" alt="Display Screen" class="fullscreen-image">
     </div>
 
     <script>
         const pngMemes = [
             "1781893487984.png"
         ];
-        // Safely encoding the spaces and characters in your screenshot name
-        const defaultImage = encodeURIComponent("Screenshot 2026-06-19 134357.jpg");
+        // Updated with the exact, verbatim filename string
+        const defaultImage = "Screenshot 2026-06-19 134404.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
@@ -162,7 +164,7 @@
 
             const startPrank = () => {
                 const randomIndex = Math.floor(Math.random() * pngMemes.length);
-                const randomPng = encodeURIComponent(pngMemes[randomIndex]);
+                const randomPng = pngMemes[randomIndex];
                 
                 drone.publish({
                     room: roomName,
@@ -189,7 +191,7 @@
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
 
-            // Set default screenshot image immediately
+            // Force initial string load
             imageElement.src = defaultImage;
 
             room.on('message', message => {
