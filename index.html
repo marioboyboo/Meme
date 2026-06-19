@@ -32,35 +32,20 @@
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const imageElement = document.getElementById('memeImg');
-            
-            // Scan the current directory
-            fetch('./')
-                .then(response => response.text())
-                .then(data => {
-                    // Create a global regular expression to find ALL jpg links in the folder
-                    const regex = /href="([^"\s>]+(?:\.jpg|\.jpeg))"/ig;
-                    let matches = [];
-                    let match;
-                    
-                    // Collect every matching file name found
-                    while ((match = regex.exec(data)) !== null) {
-                        matches.push(match[1]);
-                    }
+            // 📑 ADD YOUR .jpg OR .png FILE NAMES HERE!
+            const memeImages = [
+                "1781893487984.png",
+                "5043.jpg",
+                "warrior_cats_meme.png"
+            ];
 
-                    // If we found any JPGs, pick a random one!
-                    if (matches.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * matches.length);
-                        imageElement.src = matches[randomIndex];
-                    } else {
-                        // Fallback if no images are found via scan
-                        imageElement.src = "image.jpg";
-                    }
-                })
-                .catch(() => {
-                    // Fallback if directory scanning is restricted by the browser
-                    imageElement.src = "image.jpg";
-                });
+            const imageElement = document.getElementById('memeImg');
+
+            if (memeImages.length > 0) {
+                // Pick a random image from the list
+                const randomIndex = Math.floor(Math.random() * memeImages.length);
+                imageElement.src = memeImages[randomIndex];
+            }
         });
     </script>
 
