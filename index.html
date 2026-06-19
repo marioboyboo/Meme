@@ -10,6 +10,11 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            /* Prevents the laptop browser from highlighting text or getting stuck in a drag-and-drop state */
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         html, body {
@@ -82,8 +87,8 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
-            user-select: none;
-            -webkit-user-select: none;
+            /* Double enforcement to kill image/button drag shadows on laptops */
+            -webkit-user-drag: none;
             transition: background 0.1s ease;
         }
 
@@ -110,6 +115,7 @@
             height: 100%;
             object-fit: cover;
             display: block;
+            -webkit-user-drag: none;
         }
 
         /* Bottom-Right Fullscreen Control Toggle */
@@ -151,12 +157,12 @@
     </div>
 
     <div id="masterPanel" class="master-panel">
-        <button id="prankBtn" class="prank-btn">PRANK</button>
+        <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <p class="status-text">Hold down to trigger a random image on all displays</p>
     </div>
 
     <div id="slaveView" class="slave-view">
-        <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image">
+        <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         
         <div id="preloaderContainer"></div>
         
@@ -198,15 +204,14 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
-            // Sync with any display client that broadcasts its active file list
             room.on('message', message => {
                 if (message.data.action === 'SYNC_LIST') {
-                    // Combine lists if multiple clients find different setups, keeping unique items
                     validImagesFound = [...new Set([...validImagesFound, ...message.data.list])];
                 }
             });
 
-            const startPrank = () => {
+            const startPrank = (e) => {
+                if (e) e.preventDefault();
                 const randomIndex = Math.floor(Math.random() * validImagesFound.length);
                 const randomPng = validImagesFound[randomIndex];
                 
@@ -216,22 +221,23 @@
                 });
             };
 
-            const stopPrank = () => {
+            const stopPrank = (e) => {
+                if (e) e.preventDefault();
                 drone.publish({
                     room: roomName,
                     message: { action: 'RESET' }
                 });
             };
 
+            // Desktop Mouse Control (with drag prevention)
             prankBtn.addEventListener('mousedown', startPrank);
             prankBtn.addEventListener('mouseup', stopPrank);
             prankBtn.addEventListener('mouseleave', stopPrank);
             
-            prankBtn.addEventListener('touchstart', (e) => { 
-                e.preventDefault(); 
-                startPrank(); 
-            });
-            prankBtn.addEventListener('touchend', stopPrank);
+            // Mobile isolated Touch Control
+            prankBtn.addEventListener('touchstart', startPrank, { passive: false });
+            prankBtn.addEventListener('touchend', stopPrank, { passive: false });
+            prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
         }
 
         // --- DISPLAY CLIENT SYSTEM ---
@@ -243,7 +249,6 @@
 
             scanAndRefreshAssets();
 
-            // Background scanning fires automatically every 60 seconds
             setInterval(() => {
                 scanAndRefreshAssets();
             }, 60000);
@@ -261,7 +266,6 @@
             });
         }
 
-        // Brute-force scan engine covering paths 1.png through 100.png safely
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
@@ -299,7 +303,6 @@
                     discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
                     validImagesFound = discoveredList;
 
-                    // Tell the controller (and any other client screens) what files are ready to rock
                     drone.publish({
                         room: roomName,
                         message: { action: 'SYNC_LIST', list: validImagesFound }
