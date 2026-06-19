@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MemeVault - Remote Control</title>
+    <title>MemeVault - Remote Control Fixed</title>
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -21,7 +21,7 @@
             overflow: hidden;
         }
 
-        /* --- Setup Menu Styles --- */
+        /* Setup Menu */
         .setup-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -36,7 +36,6 @@
         .setup-screen h1 {
             margin-bottom: 30px;
             font-size: 2rem;
-            letter-spacing: 1px;
         }
 
         .btn-group {
@@ -51,16 +50,12 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: transform 0.1s, background 0.2s;
         }
 
         .master-btn { background-color: #ff4500; color: white; }
-        .master-btn:hover { background-color: #e03d00; }
         .slave-btn { background-color: #00ffcc; color: #121212; }
-        .slave-btn:hover { background-color: #00cc99; }
-        .role-btn:active { transform: scale(0.95); }
 
-        /* --- Master Panel Styles --- */
+        /* Master Panel */
         .master-panel {
             display: none;
             width: 100%;
@@ -84,22 +79,18 @@
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
             user-select: none;
             -webkit-user-select: none;
-            transition: background 0.1s, transform 0.05s;
         }
 
         .prank-btn:active {
             background: #b33000;
-            transform: scale(0.95);
-            box-shadow: 0 5px 15px rgba(255, 69, 0, 0.2);
         }
 
         .status-text {
             margin-top: 20px;
             color: #888;
-            font-size: 1rem;
         }
 
-        /* --- Slave View Styles --- */
+        /* Slave View */
         .slave-view {
             display: none;
             width: 100%;
@@ -135,35 +126,34 @@
     </div>
 
     <script>
-        // 📑 LIST OF PNG MEMES FOR THE PRANK
         const pngMemes = [
             "1781893487984.png",
-            "warrior_cats_meme.png"
+            "5043.jpg" // Added your other image just in case!
         ];
         const defaultImage = "Screenshot 2026-06-19 134357.jpg";
 
-        // 🔑 SCALEDRONE CONNECTION SETUP
-        // Swap out YOUR_SCALEDRONE_CHANNEL_ID with the one Scaledrone gave you!
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
         let room;
 
-        drone.on('open', error => {
-            if (error) return console.error(error);
-            console.log('Connected to Scaledrone');
-        });
-
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
             
-            // Connect to the room so messages can sync back and forth
+            // Connect and listen to room events immediately
             room = drone.subscribe(roomName);
 
-            if (role === 'master') {
-                setupMaster();
-            } else {
-                setupSlave();
-            }
+            room.on('open', error => {
+                if (error) {
+                    alert("Scaledrone Room Error: " + error);
+                    return;
+                }
+                
+                if (role === 'master') {
+                    setupMaster();
+                } else {
+                    setupSlave();
+                }
+            });
         }
 
         // --- MASTER SYSTEM ---
@@ -171,9 +161,7 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
-            // Trigger prank when pressing down (Mouse and Touch support)
             const startPrank = () => {
-                // Select a completely random index from your array
                 const randomIndex = Math.floor(Math.random() * pngMemes.length);
                 const randomPng = pngMemes[randomIndex];
                 
@@ -183,7 +171,6 @@
                 });
             };
 
-            // Reset when releasing
             const stopPrank = () => {
                 drone.publish({
                     room: roomName,
@@ -191,12 +178,9 @@
                 });
             };
 
-            // PC Mouse Interactions
             prankBtn.addEventListener('mousedown', startPrank);
             prankBtn.addEventListener('mouseup', stopPrank);
             prankBtn.addEventListener('mouseleave', stopPrank);
-
-            // Phone/Tablet Touch Interactions
             prankBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPrank(); });
             prankBtn.addEventListener('touchend', stopPrank);
         }
@@ -206,15 +190,16 @@
             document.getElementById('slaveView').style.display = 'block';
             const imageElement = document.getElementById('memeImg');
 
-            // Listen for signals floating in from the Master controller
+            // Force load the default layout image right away
+            imageElement.src = defaultImage;
+
             room.on('message', message => {
                 const data = message.data;
                 
                 if (data.action === 'TRIGGER') {
-                    // Instantly switch to the random PNG chosen by the master
-                    imageElement.src = data.img;
+                    // Cache buster included (?t=) to force the browser to reload the image cleanly
+                    imageElement.src = data.img + "?t=" + new Date().getTime();
                 } else if (data.action === 'RESET') {
-                    // Snap straight back to the default screenshot layout
                     imageElement.src = defaultImage;
                 }
             });
