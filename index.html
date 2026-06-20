@@ -430,7 +430,6 @@
             triggerTargetAction('REQUEST_SYNC', true);
         }
 
-        // Fix logic where closed overlay retains sync layout updates
         function closePopup() { document.getElementById('popupOverlay').style.display = 'none'; }
 
         function buildPopupGrids() {
@@ -472,7 +471,7 @@
                 audioGrid.appendChild(item);
             });
 
-            // 3. Music Songs Section Layout
+            // 3. Music Songs Layout
             songGrid.innerHTML = '';
             validSongsFound.forEach(songFile => {
                 const item = document.createElement('div');
@@ -543,8 +542,11 @@
 
         function clearSingleLock(type) {
             if (type === 'TRIGGER') { currentStickyImg = null; resetTargetAction('RESET_IMAGE'); }
-            else if (type === 'TRIGGER_AUDIO') { currentStickyAudio = null; resetTargetAction('RESET_AUDIO'); }
-            else if (type === 'TRIGGER_SONG') { currentStickySong = null; resetTargetAction('RESET_AUDIO'); }
+            else if (type === 'TRIGGER_AUDIO' || type === 'TRIGGER_SONG') { 
+                currentStickyAudio = null; 
+                currentStickySong = null; 
+                resetTargetAction('RESET_AUDIO'); 
+            }
             updateStatusBarUI();
             buildPopupGrids();
         }
@@ -645,7 +647,6 @@
                     currentPrankImage = null;
                     imageElement.src = BASE_URL + defaultImage + timestamp;
                 }
-                // Catching both standard audio parameters and song variables
                 else if (data.action === 'TRIGGER_AUDIO' || data.action === 'TRIGGER_SONG') {
                     stopAllAudioAndEffects();
                     flexibleAudioTrack = new Audio(BASE_URL + data.file + timestamp);
@@ -672,7 +673,6 @@
             let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
             let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
             
-            // Generate full map of song filenames from song1.mp3 to song100.mp3
             let discoveredSongs = []; 
             for (let i = 1; i <= 100; i++) {
                 discoveredSongs.push(`song${i}.mp3`);
