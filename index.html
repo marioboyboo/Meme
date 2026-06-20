@@ -125,15 +125,57 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #333;
             flex-shrink: 0;
+            position: relative;
         }
 
         .close-popup-btn {
             padding: 8px 16px;
-            background: #ff4500;
+            background: #333;
             color: white;
-            border: none;
+            border: 1px solid #555;
             border-radius: 5px;
             font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* NEW Dynamic Turquoise Stay On target area */
+        .stay-drop-zone {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #00ffcc;
+            color: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.85rem;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            transform: scale(0.5);
+            pointer-events: none;
+        }
+
+        .stay-drop-zone.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .stay-drop-zone.hovered {
+            background: #00b38f;
+            transform: scale(1.15);
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.8);
+        }
+
+        .stay-drop-zone.locked {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+            background: #ff4500;
+            color: white;
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
             cursor: pointer;
         }
 
@@ -141,7 +183,7 @@
         .vault-split-container {
             display: flex;
             flex-direction: column;
-            height: calc(100% - 60px);
+            height: calc(100% - 85px);
             gap: 15px;
             margin-top: 15px;
         }
@@ -150,7 +192,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 0; /* Important for scroll calculations */
+            min-height: 0;
         }
 
         .vault-section h3 {
@@ -176,16 +218,18 @@
             border: 2px solid #3c3c3c;
             border-radius: 8px;
             overflow: hidden;
-            cursor: pointer;
+            cursor: grab;
             display: flex;
             flex-direction: column;
             align-items: center;
             position: relative;
+            touch-action: none; /* Block default scrolling mechanics during drag actions */
         }
 
         .grid-item:active, .grid-item.active {
             border-color: #00ffcc;
             background: #2a2a2a;
+            cursor: grabbing;
         }
 
         .grid-item img {
@@ -195,7 +239,6 @@
             pointer-events: none;
         }
 
-        /* Sound Icon Placeholder Box */
         .audio-icon-box {
             width: 100%;
             height: 75px;
@@ -205,6 +248,7 @@
             background: #1b1b1b;
             font-size: 2rem;
             color: #ff4500;
+            pointer-events: none;
         }
 
         .grid-item span {
@@ -212,6 +256,22 @@
             padding: 6px;
             color: #aaa;
             font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* Floating clone feedback graphic layout during drag */
+        #dragProxy {
+            display: none;
+            position: fixed;
+            width: 90px;
+            height: 65px;
+            background: rgba(0, 255, 204, 0.25);
+            border: 2px solid #00ffcc;
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            transform: translate(-50%, -50%);
         }
 
         /* Display View */
@@ -252,6 +312,8 @@
 </head>
 <body>
 
+    <div id="dragProxy"></div>
+
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -268,9 +330,11 @@
 
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
-            <h2>Meme Vault Controller</h2>
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
-        </div>
+            
+            <div id="stayDropZone" class="stay-drop-zone">STAY</div>
+            
+            <div style="width:75px;"></div> </div>
         <div class="vault-split-container">
             
             <div class="vault-section">
@@ -300,10 +364,14 @@
         const roomName = 'observable-meme-room';
         let room;
 
-        // Dynamic local repository vectors updated live by clients
         let validImagesFound = ["1.png"]; 
         let validAudioFound = []; 
         let currentPrankImage = null;
+
+        // Sticky Engine State Vectors
+        let isStickyLocked = false;
+        let activeDragData = null; // Stores target info if dragging occurs
+        let dragTrackingActive = false;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -311,12 +379,7 @@
 
             room.on('open', error => {
                 if (error) return alert("Scaledrone Error: " + error);
-                
-                if (role === 'master') {
-                    setupMaster();
-                } else {
-                    setupSlave();
-                }
+                if (role === 'master') setupMaster(); else setupSlave();
             });
         }
 
@@ -335,6 +398,7 @@
 
             const startPrank = (e) => {
                 if (e) e.preventDefault();
+                if (isStickyLocked) return;
                 const randomIndex = Math.floor(Math.random() * validImagesFound.length);
                 const randomPng = validImagesFound[randomIndex];
                 triggerTargetAction('TRIGGER', randomPng);
@@ -342,6 +406,7 @@
 
             const stopPrank = (e) => {
                 if (e) e.preventDefault();
+                if (isStickyLocked) return;
                 resetTargetAction('RESET');
             };
 
@@ -351,6 +416,19 @@
             prankBtn.addEventListener('touchstart', startPrank, { passive: false });
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
+
+            // Setup the Dropzone click tracking listener
+            const dropZone = document.getElementById('stayDropZone');
+            dropZone.addEventListener('click', () => {
+                if (isStickyLocked) {
+                    clearStickyLock();
+                }
+            });
+            dropZone.addEventListener('touchend', () => {
+                if (isStickyLocked) {
+                    clearStickyLock();
+                }
+            });
 
             buildPopupGrids();
         }
@@ -369,6 +447,14 @@
             });
         }
 
+        function clearStickyLock() {
+            isStickyLocked = false;
+            const dropZone = document.getElementById('stayDropZone');
+            dropZone.className = 'stay-drop-zone';
+            dropZone.innerText = 'STAY';
+            resetTargetAction('RESET');
+        }
+
         // --- SPLIT GRIDS POPUP INTERACTION GENERATOR ---
         function openPopup() {
             buildPopupGrids();
@@ -377,7 +463,7 @@
 
         function closePopup() {
             document.getElementById('popupOverlay').style.display = 'none';
-            resetTargetAction('RESET');
+            clearStickyLock();
         }
 
         function buildPopupGrids() {
@@ -387,65 +473,142 @@
 
             const timestamp = "?t=" + new Date().getTime();
 
-            // 1. POPULATE IMAGE CARDS (TOP HALF)
+            // 1. POPULATE IMAGES
             imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
-                
                 const img = document.createElement('img');
                 img.src = imgFile + timestamp;
-                
                 const label = document.createElement('span');
                 label.innerText = imgFile;
-
                 item.appendChild(img);
                 item.appendChild(label);
 
-                // Hold down to fire target image live across network
-                const pressStart = () => { triggerTargetAction('TRIGGER', imgFile); item.classList.add('active'); };
-                item.addEventListener('mousedown', pressStart);
-                item.addEventListener('touchstart', (e) => { e.preventDefault(); pressStart(); }, { passive: false });
-
+                attachDragAndHoldListeners(item, 'TRIGGER', imgFile);
                 imgGrid.appendChild(item);
             });
 
-            // 2. POPULATE AUDIO CARDS (BOTTOM HALF)
+            // 2. POPULATE AUDIO
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
-
                 const iconBox = document.createElement('div');
                 iconBox.className = 'audio-icon-box';
                 iconBox.innerText = '🎵';
-
                 const label = document.createElement('span');
                 label.innerText = audioFile;
-
                 item.appendChild(iconBox);
                 item.appendChild(label);
 
-                // Hold down to stream targeted audio frequencies live across network
-                const pressStart = () => { triggerTargetAction('TRIGGER_AUDIO', audioFile); item.classList.add('active'); };
-                item.addEventListener('mousedown', pressStart);
-                item.addEventListener('touchstart', (e) => { e.preventDefault(); pressStart(); }, { passive: false });
-
+                attachDragAndHoldListeners(item, 'TRIGGER_AUDIO', audioFile);
                 audioGrid.appendChild(item);
             });
-
-            // Handle clean interface lifting routines
-            window.removeEventListener('mouseup', clearAllActiveStates);
-            window.removeEventListener('touchend', clearAllActiveStates);
-            window.addEventListener('mouseup', clearAllActiveStates);
-            window.addEventListener('touchend', clearAllActiveStates);
         }
 
-        function clearAllActiveStates() {
-            document.querySelectorAll('.grid-item').forEach(el => el.classList.remove('active'));
-            if (document.getElementById('popupOverlay').style.display === 'flex') {
-                resetTargetAction('RESET');
-            }
+        // CUSTOM GESTURE ENGINE: Handles unified click-hold AND drag-to-sticky operations smoothly
+        function attachDragAndHoldListeners(element, type, file) {
+            let startX = 0;
+            let startY = 0;
+            let currentX = 0;
+            let currentY = 0;
+            let holdTriggered = false;
+
+            const onStart = (clientX, clientY) => {
+                if (isStickyLocked) return;
+                
+                startX = clientX;
+                startY = clientY;
+                holdTriggered = true;
+                dragTrackingActive = true;
+                
+                activeDragData = { type: type, file: file, element: element };
+                element.classList.add('active');
+
+                // Trigger audio/image display immediately on touch down
+                triggerTargetAction(type, file);
+
+                // Show turquoise Dropzone top indicator
+                document.getElementById('stayDropZone').className = 'stay-drop-zone visible';
+
+                // Setup global follow loops
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onEnd);
+                window.addEventListener('touchmove', onTouchMove, { passive: false });
+                window.addEventListener('touchend', onEnd);
+            };
+
+            const onMove = (clientX, clientY) => {
+                if (!dragTrackingActive) return;
+                
+                currentX = clientX;
+                currentY = clientY;
+
+                // Render customized tracking feedback bubble under pointer coordinates
+                const proxy = document.getElementById('dragProxy');
+                proxy.style.display = 'block';
+                proxy.style.left = currentX + 'px';
+                proxy.style.top = currentY + 'px';
+
+                // Check collision bounds with the turquoise zone
+                const dropZone = document.getElementById('stayDropZone');
+                const dzRect = dropZone.getBoundingClientRect();
+
+                if (currentX >= dzRect.left && currentX <= dzRect.right &&
+                    currentY >= dzRect.top && currentY <= dzRect.bottom) {
+                    dropZone.classList.add('hovered');
+                } else {
+                    dropZone.classList.remove('hovered');
+                }
+            };
+
+            const onTouchMove = (e) => {
+                if (e.touches.length > 0) {
+                    onMove(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            };
+
+            const onEnd = (e) => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onEnd);
+                window.removeEventListener('touchmove', onTouchMove);
+                window.removeEventListener('touchend', onEnd);
+
+                if (!dragTrackingActive) return;
+                dragTrackingActive = false;
+                
+                element.classList.remove('active');
+                document.getElementById('dragProxy').style.display = 'none';
+
+                const dropZone = document.getElementById('stayDropZone');
+                const dzRect = dropZone.getBoundingClientRect();
+
+                // Did the user drop it inside the dropzone?
+                if (currentX >= dzRect.left && currentX <= dzRect.right &&
+                    currentY >= dzRect.top && currentY <= dzRect.bottom) {
+                    
+                    // LOCK SYSTEM IN STICKY STATE
+                    isStickyLocked = true;
+                    dropZone.className = 'stay-drop-zone locked';
+                    dropZone.innerText = '🛑 STOP';
+                    
+                    // Enforce live execution keeps running
+                    triggerTargetAction(type, file);
+                } else {
+                    // Normal release: hide zone indicator and clear display path
+                    if (!isStickyLocked) {
+                        dropZone.className = 'stay-drop-zone';
+                        resetTargetAction('RESET');
+                    }
+                }
+            };
+
+            // Bind raw entry parameters safely across pointer architectures
+            element.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
+            element.addEventListener('touchstart', (e) => {
+                if(e.touches.length > 0) onStart(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: false });
         }
 
         // --- DISPLAY CLIENT SYSTEM ---
@@ -454,7 +617,6 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
-            // Global active client audio node tracking vector
             let activeAudioTrack = null;
 
             scanAndRefreshAssets();
@@ -463,25 +625,19 @@
             room.on('message', message => {
                 const data = message.data;
                 
-                // Image Prank Trigger Execution Path
                 if (data.action === 'TRIGGER') {
                     currentPrankImage = data.file;
                     imageElement.src = currentPrankImage;
                 } 
-                
-                // Audio Prank Trigger Execution Path
                 else if (data.action === 'TRIGGER_AUDIO') {
                     if (activeAudioTrack) {
                         activeAudioTrack.pause();
                         activeAudioTrack = null;
                     }
                     activeAudioTrack = new Audio(data.file + "?t=" + new Date().getTime());
-                    activeAudioTrack.play().catch(err => console.log("Audio playback context restriction: ", err));
+                    activeAudioTrack.play().catch(err => console.log(err));
                 } 
-                
-                // General Reset Path
                 else if (data.action === 'RESET') {
-                    // Instantly drop any screaming audio
                     if (activeAudioTrack) {
                         activeAudioTrack.pause();
                         activeAudioTrack = null;
@@ -492,7 +648,6 @@
             });
         }
 
-        // Sweeps directory paths searching for both image arrays and audio tracks simultaneously
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
@@ -508,14 +663,12 @@
                 checksCompleted++;
                 if (checksCompleted === totalChecksExpected) {
                     if (discoveredImages.length === 0) discoveredImages = ["1.png"];
-                    
                     discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
                     discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
 
                     validImagesFound = discoveredImages;
                     validAudioFound = discoveredAudio;
 
-                    // Sync the structural local maps over the room pipeline
                     drone.publish({
                         room: roomName,
                         message: { action: 'SYNC_LIST', images: validImagesFound, audio: validAudioFound }
@@ -524,12 +677,10 @@
                     if (!currentPrankImage) {
                         imageElement.src = defaultImage + timestamp;
                     }
-                    console.log("Dual asset scan successful. Tracks mapped cleanly.");
                 }
             };
 
             for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
-                // Image verification track
                 const imgFilename = i + ".png";
                 const imgCheck = new Image();
                 imgCheck.onload = function() {
@@ -541,11 +692,9 @@
                 imgCheck.onerror = checkFinished;
                 imgCheck.src = imgFilename + timestamp;
 
-                // Audio verification track
                 const audioFilename = i + ".mp3";
                 const audioCheck = new Audio();
                 audioCheck.oncanplaythrough = function() {
-                    // Avoid double push detections on duplicate event triggers
                     if (!discoveredAudio.includes(audioFilename)) discoveredAudio.push(audioFilename);
                     checkFinished();
                 };
