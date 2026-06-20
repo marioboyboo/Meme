@@ -357,11 +357,11 @@
         </div>
     </div>
 
-    <div id="slaveView" class="slave-view">
+    <div id="slaveView" class="slave-view" onclick="unlockAudioContext()">
         <div id="strobeOverlay" class="strobe-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
-        <button class="fullscreen-toggle-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+        <button class="fullscreen-toggle-btn" onclick="toggleFullscreen(event)">⛶ Fullscreen</button>
     </div>
 
     <script>
@@ -378,6 +378,10 @@
 
         let currentStickyImg = null;
         let currentStickyAudio = null;
+
+        // Global variables for slave audio tracks so they can be unlocked via user click
+        let jAudio5 = null;
+        let jAudio4 = null;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -597,14 +601,13 @@
         // --- DISPLAY CLIENT SYSTEM ---
         function setupSlave() {
             const slavePanel = document.getElementById('slaveView');
-            const strobeLayer = document.getElementById('strobeOverlay');
             slavePanel.style.display = 'block';
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
-            // FIXED ASSET MEMORY LAYERS: Elements are built once and kept forever
-            const jAudio5 = new Audio("5.mp3");
-            const jAudio4 = new Audio("4.mp3");
+            // Initialize audio tracks placeholder profiles
+            jAudio5 = new Audio("5.mp3");
+            jAudio4 = new Audio("4.mp3");
             jAudio5.preload = "auto";
             jAudio4.preload = "auto";
 
@@ -615,11 +618,11 @@
             setInterval(scanAndRefreshAssets, 45000);
 
             const stopAllAudioAndEffects = () => {
-                jAudio5.pause(); jAudio5.currentTime = 0;
-                jAudio4.pause(); jAudio4.currentTime = 0;
+                if (jAudio5) { jAudio5.pause(); jAudio5.currentTime = 0; }
+                if (jAudio4) { jAudio4.pause(); jAudio4.currentTime = 0; }
                 if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
                 if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
-                strobeLayer.classList.remove('active');
+                document.getElementById('strobeOverlay').classList.remove('active');
             };
 
             room.on('message', message => {
@@ -633,19 +636,21 @@
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
 
-                    // Instantly trigger from static memory channel
-                    jAudio5.play().catch(err => console.log(err));
+                    if (jAudio5) {
+                        jAudio5.play().catch(err => console.log("Blocked entry: ", err));
 
-                    jAudio5.onended = function() {
-                        jumpscareTimeout = setTimeout(() => {
-                            strobeLayer.classList.add('active'); // Fire flash overlay
-                            jAudio4.play().catch(err => console.log(err)); // Fire 4.mp3 instantly
-
-                            jAudio4.onended = function() {
-                                strobeLayer.classList.remove('active');
-                            };
-                        }, 1000);
-                    };
+                        jAudio5.onended = function() {
+                            jumpscareTimeout = setTimeout(() => {
+                                document.getElementById('strobeOverlay').classList.add('active');
+                                if (jAudio4) {
+                                    jAudio4.play().catch(err => console.log(err));
+                                    jAudio4.onended = function() {
+                                        document.getElementById('strobeOverlay').classList.remove('active');
+                                    };
+                                }
+                            }, 1000);
+                        };
+                    }
                 }
                 
                 else if (data.action === 'TRIGGER') {
@@ -670,6 +675,16 @@
                     imageElement.src = defaultImage + timestamp;
                 }
             });
+        }
+
+        // CRITICAL FIX: Explicit User Interaction Hook to bypass Autoplay Policies
+        function unlockAudioContext() {
+            if (jAudio5 && jAudio4) {
+                // Flash load track data to verify validation token context
+                jAudio5.load();
+                jAudio4.load();
+                console.log("Audio pipeline authorized by user interaction.");
+            }
         }
 
         function scanAndRefreshAssets() {
@@ -729,7 +744,10 @@
             }
         }
 
-        function toggleFullscreen() {
+        function toggleFullscreen(event) {
+            if (event) event.stopPropagation(); // Prevents double firing context unlocker
+            unlockAudioContext(); 
+
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => console.log(err));
             } else {
