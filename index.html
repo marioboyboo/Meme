@@ -779,90 +779,84 @@
             });
         }
 
-        function scanAndRefreshAssets() {
+        // Optimized asset scanner using background HTTP requests
+        async function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
             const timestamp = "?t=" + new Date().getTime();
             
             if (preloaderContainer) preloaderContainer.innerHTML = '';
+            
             let discoveredImages = [];
             let discoveredAudio = [];
             let discoveredSongs = [];
-            
-            let totalChecksExpected = MAX_SCAN_LIMIT * 3;
-            let checksCompleted = 0;
 
-            const checkFinished = () => {
-                checksCompleted++;
-                if (checksCompleted === totalChecksExpected) {
-                    if (discoveredImages.length === 0) discoveredImages = ["1.png"];
-                    
-                    discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
-                    discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
-                    discoveredSongs.sort((a, b) => {
-                        const numA = parseInt(a.replace("song", "").replace(".mp3", ""));
-                        const numB = parseInt(b.replace("song", "").replace(".mp3", ""));
-                        return numA - numB;
-                    });
-
-                    validImagesFound = discoveredImages;
-                    validAudioFound = discoveredAudio;
-                    validSongsFound = discoveredSongs;
-
-                    drone.publish({
-                        room: roomName,
-                        message: { 
-                            action: 'SYNC_LIST', 
-                            images: validImagesFound, 
-                            audio: validAudioFound,
-                            songs: validSongsFound
-                        }
-                    });
-
-                    if (!currentPrankImage && imageElement) {
-                        imageElement.src = defaultImage + timestamp;
-                    }
-                }
-            };
+            // Run scanner tasks in parallel chunks to avoid server throttling
+            const scanPromises = [];
 
             for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
                 // 1. Image Check
-                const imgFilename = i + ".png";
-                const imgCheck = new Image();
-                imgCheck.onload = function() {
-                    discoveredImages.push(imgFilename);
-                    const preload = new Image(); preload.src = imgFilename + timestamp;
-                    if (preloaderContainer) preloaderContainer.appendChild(preload);
-                    checkFinished();
-                };
-                imgCheck.onerror = checkFinished;
-                imgCheck.src = imgFilename + timestamp;
+                scanPromises.push(
+                    fetch(`${i}.png${timestamp}`, { method: 'HEAD' })
+                        .then(res => {
+                            if (res.ok) {
+                                discoveredImages.push(`${i}.png`);
+                                const preload = new Image();
+                                preload.src = `${i}.png${timestamp}`;
+                                if (preloaderContainer) preloaderContainer.appendChild(preload);
+                            }
+                        }).catch(() => {})
+                );
 
                 // 2. SFX Audio Check
-                const audioFilename = i + ".mp3";
-                const audioCheck = new Audio();
-                audioCheck.src = audioFilename + timestamp;
-                audioCheck.oncanplaythrough = function() {
-                    if (!discoveredAudio.includes(audioFilename)) {
-                        discoveredAudio.push(audioFilename);
-                    }
-                    checkFinished();
-                    audioCheck.oncanplaythrough = null;
-                };
-                audioCheck.onerror = checkFinished;
+                scanPromises.push(
+                    fetch(`${i}.mp3${timestamp}`, { method: 'HEAD' })
+                        .then(res => {
+                            if (res.ok) discoveredAudio.push(`${i}.mp3`);
+                        }).catch(() => {})
+                );
 
-                // 3. Dedicated Song Check
-                const songFilename = "song" + i + ".mp3";
-                const songCheck = new Audio();
-                songCheck.src = songFilename + timestamp;
-                songCheck.oncanplaythrough = function() {
-                    if (!discoveredSongs.includes(songFilename)) {
-                        discoveredSongs.push(songFilename);
-                    }
-                    checkFinished();
-                    songCheck.oncanplaythrough = null;
-                };
-                songCheck.onerror = checkFinished;
+                // 3. Song Check
+                scanPromises.push(
+                    fetch(`song${i}.mp3${timestamp}`, { method: 'HEAD' })
+                        .then(res => {
+                            if (res.ok) discoveredSongs.push(`song${i}.mp3`);
+                        }).catch(() => {})
+                );
+            }
+
+            // Wait for all HTTP checks to finish checking files
+            await Promise.all(scanPromises);
+
+            // Defaults fallback if no image targets exist
+            if (discoveredImages.length === 0) discoveredImages = ["1.png"];
+
+            // Sort everything numerically
+            discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
+            discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
+            discoveredSongs.sort((a, b) => {
+                const numA = parseInt(a.replace("song", "").replace(".mp3", ""));
+                const numB = parseInt(b.replace("song", "").replace(".mp3", ""));
+                return numA - numB;
+            });
+
+            validImagesFound = discoveredImages;
+            validAudioFound = discoveredAudio;
+            validSongsFound = discoveredSongs;
+
+            // Broadcast verified payload over network
+            drone.publish({
+                room: roomName,
+                message: { 
+                    action: 'SYNC_LIST', 
+                    images: validImagesFound, 
+                    audio: validAudioFound,
+                    songs: validSongsFound
+                }
+            });
+
+            if (!currentPrankImage && imageElement) {
+                imageElement.src = defaultImage + timestamp;
             }
         }
 
