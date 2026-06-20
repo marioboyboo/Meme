@@ -594,20 +594,20 @@
             jumpscareTrack.onended = function() {
                 const timestamp = "?t=" + new Date().getTime();
                 if (currentJumpscarePhase === 5) {
-                    // Start 4.mp3 IMMEDIATELY when phase 5 finishes
+                    // Halved: Play 4.mp3 after exactly 0.5 seconds (500ms)
                     jumpscareAudioTimeout = setTimeout(() => {
                         currentJumpscarePhase = 4;
                         if (gainNode) gainNode.gain.value = 5.0; 
                         jumpscareTrack.src = BASE_URL + "4.mp3" + timestamp;
                         jumpscareTrack.play().catch(e => console.log(e));
-                    }, 1000);
+                    }, 500);
 
-                    // DELAY the strobe lights by exactly half a second (1000ms + 500ms delay)
+                    // Maintain visual separation: Strobe lights start 0.5s after 4.mp3 hits (500ms + 500ms)
                     strobeDelayTimeout = setTimeout(() => {
                         if (currentJumpscarePhase === 4) {
                             document.getElementById('strobeOverlay').classList.add('active');
                         }
-                    }, 1500);
+                    }, 1000);
 
                 } else if (currentJumpscarePhase === 4) {
                     document.getElementById('strobeOverlay').classList.remove('active');
