@@ -80,7 +80,6 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
-            -webkit-user-drag: none;
         }
 
         .action-button-row {
@@ -91,48 +90,21 @@
             max-width: 90%;
         }
 
-        .jumpscare-btn {
+        .jumpscare-btn, .banana-btn, .kungfu-btn {
             padding: 12px 24px;
             font-size: 1rem;
             font-weight: bold;
-            background-color: #ff0000;
-            color: white;
             border: 3px solid #fff;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
             transition: transform 0.1s ease;
         }
 
-        .banana-btn {
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: bold;
-            background-color: #e6b800;
-            color: #121212;
-            border: 3px solid #fff;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(230, 184, 0, 0.6);
-            transition: transform 0.1s ease;
-        }
+        .jumpscare-btn { background-color: #ff0000; color: white; box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
+        .banana-btn { background-color: #e6b800; color: #121212; box-shadow: 0 0 15px rgba(230, 184, 0, 0.6); }
+        .kungfu-btn { background-color: #ffffff; color: #121212; border-color: #ff4500; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); }
 
-        .kungfu-btn {
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: bold;
-            background-color: #ffffff;
-            color: #121212;
-            border: 3px solid #ff4500;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(255, 69, 0, 0.4);
-            transition: transform 0.1s ease;
-        }
-
-        .jumpscare-btn:active, .banana-btn:active, .kungfu-btn:active {
-            transform: scale(0.95);
-        }
+        .jumpscare-btn:active, .banana-btn:active, .kungfu-btn:active { transform: scale(0.95); }
 
         .choose-btn {
             padding: 12px 30px;
@@ -146,19 +118,10 @@
             transition: all 0.2s ease;
         }
 
-        .choose-btn:hover {
-            background-color: #444;
-            border-color: #00ffcc;
-        }
+        .choose-btn:hover { background-color: #444; border-color: #00ffcc; }
+        .status-text { color: #888; font-size: 0.9rem; text-align: center; max-width: 80%; }
 
-        .status-text {
-            color: #888;
-            font-size: 0.9rem;
-            text-align: center;
-            max-width: 80%;
-        }
-
-        /* Popup Selection Overlay Split Screen */
+        /* Vault Selection Pop-up Overlay */
         .popup-overlay {
             display: none;
             position: absolute;
@@ -189,7 +152,6 @@
             cursor: pointer;
         }
 
-        /* Sticky Control Header Box */
         .sticky-status-bar {
             flex: 1;
             background: #111;
@@ -206,13 +168,11 @@
             background: #00ffcc;
             color: #121212;
             border-style: solid;
-            border-color: #00ffcc;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
         }
 
-        /* Split Window Layout Panels */
         .vault-split-container {
             display: flex;
             flex-direction: column;
@@ -247,7 +207,6 @@
             padding-right: 5px;
         }
 
-        /* Visual Action Cards */
         .grid-item {
             background: #252525;
             border: 2px solid #3c3c3c;
@@ -260,57 +219,21 @@
             position: relative;
         }
 
-        .grid-item:active, .grid-item.active {
-            border-color: #00ffcc;
-            background: #2a2a2a;
-        }
+        .grid-item:active, .grid-item.active { border-color: #00ffcc; background: #2a2a2a; }
+        .grid-item.sticky-active { border-color: #ff4500 !important; box-shadow: 0 0 10px rgba(255, 69, 0, 0.5); }
+        .grid-item img { width: 100%; height: 75px; object-fit: cover; pointer-events: none; }
 
-        .grid-item.sticky-active {
-            border-color: #ff4500 !important;
-            box-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+        .audio-icon-box, .song-icon-box {
+            width: 100%; height: 75px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2rem; pointer-events: none;
         }
+        .audio-icon-box { background: #1b1b1b; color: #ff4500; }
+        .song-icon-box { background: #112222; color: #00ffcc; }
 
-        .grid-item img {
-            width: 100%;
-            height: 75px;
-            object-fit: cover;
-            pointer-events: none;
-        }
+        .grid-item span { font-size: 0.75rem; padding: 6px; color: #aaa; font-weight: bold; pointer-events: none; text-align: center; }
 
-        .audio-icon-box {
-            width: 100%;
-            height: 75px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #1b1b1b;
-            font-size: 2rem;
-            color: #ff4500;
-            pointer-events: none;
-        }
-
-        .song-icon-box {
-            width: 100%;
-            height: 75px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #112222;
-            font-size: 2rem;
-            color: #00ffcc;
-            pointer-events: none;
-        }
-
-        .grid-item span {
-            font-size: 0.75rem;
-            padding: 6px;
-            color: #aaa;
-            font-weight: bold;
-            pointer-events: none;
-            text-align: center;
-        }
-
-        /* Display View */
+        /* Display Panel View */
         .slave-view {
             display: none;
             width: 100%;
@@ -324,10 +247,8 @@
             height: 100%;
             object-fit: cover;
             display: block;
-            -webkit-user-drag: none;
         }
 
-        /* Dedicated front-layer strobe shield */
         .strobe-overlay {
             display: none;
             position: absolute;
@@ -361,10 +282,8 @@
             z-index: 100;
         }
 
-        #preloaderContainer {
-            display: none;
-        }
-    </script>
+        #preloaderContainer { display: none; }
+    </style>
 </head>
 <body>
 
@@ -390,28 +309,23 @@
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
-            
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
         </div>
         <div class="vault-split-container">
-            
             <div class="vault-section">
                 <h3>🖼️ Specific Meme Images</h3>
                 <div id="imageGridContainer" class="grid-container"></div>
             </div>
-
             <div class="vault-section">
                 <h3>🔊 Quick SFX Tracks</h3>
                 <div id="audioGridContainer" class="grid-container"></div>
             </div>
-
             <div class="vault-section">
                 <h3>🎵 Full Music Songs</h3>
                 <div id="songGridContainer" class="grid-container"></div>
             </div>
-
         </div>
     </div>
 
@@ -425,7 +339,6 @@
     <script>
         const defaultImage = "meme.jpg";
 
-        // Auto-detect URL format safely whether opened inside local files or GitHub Pages
         const IS_LOCAL = window.location.protocol === 'file:';
         const BASE_URL = IS_LOCAL ? "" : window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 
@@ -447,9 +360,11 @@
         let audioCtx = null;
         let gainNode = null;
         let sourceNode = null;
+        let flexibleAudioTrack = null; 
 
         function initRole(role) {
-            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('setupScreen').style.none = 'none';
+            document.getElementById('setupScreen').remove(); 
             room = drone.subscribe(roomName);
 
             room.on('open', error => {
@@ -490,7 +405,6 @@
 
             prankBtn.addEventListener('mousedown', startPrank);
             window.addEventListener('mouseup', stopPrank);
-            
             prankBtn.addEventListener('touchstart', startPrank, { passive: false });
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
@@ -498,42 +412,25 @@
             buildPopupGrids();
         }
 
-        function triggerJumpscare() {
-            triggerTargetAction('START_JUMPSCARE', true);
-        }
-
-        function triggerBanana() {
-            triggerTargetAction('START_BANANA', true);
-        }
-
-        function triggerKungFu() {
-            triggerTargetAction('START_KUNGFU', true);
-        }
+        function triggerJumpscare() { triggerTargetAction('START_JUMPSCARE', true); }
+        function triggerBanana() { triggerTargetAction('START_BANANA', true); }
+        function triggerKungFu() { triggerTargetAction('START_KUNGFU', true); }
 
         function triggerTargetAction(actionType, assetName) {
-            drone.publish({
-                room: roomName,
-                message: { action: actionType, file: assetName }
-            });
+            drone.publish({ room: roomName, message: { action: actionType, file: assetName } });
         }
 
         function resetTargetAction(resetType) {
-            drone.publish({
-                room: roomName,
-                message: { action: resetType }
-            });
+            drone.publish({ room: roomName, message: { action: resetType } });
         }
 
-        // --- POPUP INTERACTION GENERATOR ---
         function openPopup() {
             buildPopupGrids();
             document.getElementById('popupOverlay').style.display = 'flex';
             triggerTargetAction('REQUEST_SYNC', true);
         }
 
-        function closePopup() {
-            document.getElementById('popupOverlay').style.display = 'none';
-        }
+        function closePopup() { document.getElementById('popupOverlay').style.display = 'none'; }
 
         function buildPopupGrids() {
             const imgGrid = document.getElementById('imageGridContainer');
@@ -543,31 +440,24 @@
 
             const timestamp = "?t=" + new Date().getTime();
 
-            // 1. POPULATE IMAGES
             imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
-                item.className = 'grid-item';
-                if (currentStickyImg === imgFile) item.className = 'grid-item sticky-active';
-
+                item.className = currentStickyImg === imgFile ? 'grid-item sticky-active' : 'grid-item';
                 const img = document.createElement('img');
                 img.src = BASE_URL + imgFile + timestamp;
                 const label = document.createElement('span');
                 label.innerText = imgFile;
                 item.appendChild(img);
                 item.appendChild(label);
-
                 attachHoldAndDoubleTapListeners(item, 'TRIGGER', imgFile, () => currentStickyImg);
                 imgGrid.appendChild(item);
             });
 
-            // 2. POPULATE AUDIO (SFX)
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
-                item.className = 'grid-item';
-                if (currentStickyAudio === audioFile) item.className = 'grid-item sticky-active';
-
+                item.className = currentStickyAudio === audioFile ? 'grid-item sticky-active' : 'grid-item';
                 const iconBox = document.createElement('div');
                 iconBox.className = 'audio-icon-box';
                 iconBox.innerText = '🔊';
@@ -575,18 +465,14 @@
                 label.innerText = audioFile;
                 item.appendChild(iconBox);
                 item.appendChild(label);
-
                 attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', audioFile, () => currentStickyAudio);
                 audioGrid.appendChild(item);
             });
 
-            // 3. POPULATE SONGS
             songGrid.innerHTML = '';
             validSongsFound.forEach(songFile => {
                 const item = document.createElement('div');
-                item.className = 'grid-item';
-                if (currentStickyAudio === songFile) item.className = 'grid-item sticky-active';
-
+                item.className = currentStickyAudio === songFile ? 'grid-item sticky-active' : 'grid-item';
                 const iconBox = document.createElement('div');
                 iconBox.className = 'song-icon-box';
                 iconBox.innerText = '🎵';
@@ -594,7 +480,6 @@
                 label.innerText = songFile;
                 item.appendChild(iconBox);
                 item.appendChild(label);
-
                 attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', songFile, () => currentStickyAudio);
                 songGrid.appendChild(item);
             });
@@ -603,7 +488,6 @@
         function attachHoldAndDoubleTapListeners(element, type, file, getStickyState) {
             let lastTap = 0;
             let touchActive = false;
-
             const isImage = (type === 'TRIGGER');
             const resetCommand = isImage ? 'RESET_IMAGE' : 'RESET_AUDIO';
 
@@ -627,13 +511,9 @@
                 if (e) e.preventDefault();
                 const now = new Date().getTime();
                 const timesince = now - lastTap;
-                
                 if (timesince < 300 && timesince > 0) {
-                    if (getStickyState() === file) {
-                        clearSingleLock(type);
-                    } else {
-                        setStickyLock(type, file);
-                    }
+                    if (getStickyState() === file) clearSingleLock(type);
+                    else setStickyLock(type, file);
                 }
                 lastTap = now;
             };
@@ -641,7 +521,6 @@
             element.addEventListener('mousedown', (e) => { handleTapLock(e); pressStart(e); });
             element.addEventListener('mouseup', pressEnd);
             element.addEventListener('mouseleave', pressEnd);
-
             element.addEventListener('touchstart', (e) => { handleTapLock(e); pressStart(e); }, { passive: false });
             element.addEventListener('touchend', pressEnd, { passive: false });
             element.addEventListener('touchcancel', pressEnd, { passive: false });
@@ -688,7 +567,6 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = BASE_URL + defaultImage;
 
-            let flexibleAudioTrack = null;
             let jumpscareTimeout = null;
 
             scanAndRefreshAssets();
@@ -710,7 +588,7 @@
                         currentJumpscarePhase = 4;
                         document.getElementById('strobeOverlay').classList.add('active');
                         if (gainNode) gainNode.gain.value = 5.0; 
-                        jumpscareTrack.src = BASE_URL + "4.mp3?t=" + new Date().getTime();
+                        jumpscareTrack.src = BASE_URL + "4.mp3" + timestamp;
                         jumpscareTrack.play().catch(e => console.log(e));
                     }, 1000);
                 } else if (currentJumpscarePhase === 4) {
@@ -730,14 +608,12 @@
                 if (data.action === 'REQUEST_SYNC') {
                     scanAndRefreshAssets();
                 }
-                
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 5;
                     jumpscareTrack.src = BASE_URL + "5.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
-
                 else if (data.action === 'START_BANANA') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 8; 
@@ -745,7 +621,6 @@
                     jumpscareTrack.src = BASE_URL + "1.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
-
                 else if (data.action === 'START_KUNGFU') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 9; 
@@ -753,7 +628,6 @@
                     jumpscareTrack.src = BASE_URL + "6.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
-                
                 else if (data.action === 'TRIGGER') {
                     currentPrankImage = data.file;
                     imageElement.src = BASE_URL + currentPrankImage;
@@ -778,7 +652,6 @@
             });
         }
 
-        // Instant Asset Mapping Engine Map (Bypasses blind network probing loops entirely)
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
@@ -786,12 +659,10 @@
             
             if (preloaderContainer) preloaderContainer.innerHTML = '';
             
-            // EXACT TRACKER ARRAYS (Add new filenames here when you expand your repo!)
             let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
             let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
             let discoveredSongs = []; 
 
-            // Preload structural images instantly
             discoveredImages.forEach(imgFile => {
                 const preload = new Image();
                 preload.src = BASE_URL + imgFile + timestamp;
@@ -802,7 +673,6 @@
             validAudioFound = discoveredAudio;
             validSongsFound = discoveredSongs;
 
-            // Broadcast arrays straight to controller dashboard panels
             drone.publish({
                 room: roomName,
                 message: { 
@@ -821,11 +691,11 @@
         function toggleFullscreen(event) {
             if (event) event.stopPropagation(); 
             
+            // AudioContext checks out safe now
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
                 sourceNode = audioCtx.createMediaElementSource(jumpscareTrack);
-                
                 sourceNode.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
             }
