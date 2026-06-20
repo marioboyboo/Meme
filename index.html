@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
-    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -279,19 +278,20 @@
             -webkit-user-drag: none;
         }
 
-        /* Dynamic Flashing System via Keyframes */
+        /* High-speed keyframe strobe tracking */
         @keyframes flashEffect {
             0% { background-color: #ff0000; }
             50% { background-color: #ffffff; }
             100% { background-color: #ff0000; }
         }
 
+        /* Accelerated animation timer */
         .slave-view.flashing {
-            animation: flashEffect 0.1s infinite;
+            animation: flashEffect 0.03s infinite;
         }
 
         .slave-view.flashing .fullscreen-image {
-            opacity: 0.3; /* Low image visibility to intensify flashing lights */
+            opacity: 0.2; /* Dropped slightly further to make the high-speed background colors more intense */
         }
 
         .fullscreen-toggle-btn {
@@ -315,7 +315,6 @@
 </head>
 <body>
 
-    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -324,7 +323,6 @@
         </div>
     </div>
 
-    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
@@ -332,12 +330,10 @@
         <p class="status-text">Hold down PRANK for random, use JUMPSCARE for the sequence, or open vault</p>
     </div>
 
-    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
-            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -357,7 +353,6 @@
         </div>
     </div>
 
-    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
