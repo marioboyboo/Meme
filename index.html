@@ -353,7 +353,7 @@
 
         let currentStickyImg = null;
         let currentStickyAudio = null;
-        let currentStickySong = null; // Dedicated tracker for independent song slots
+        let currentStickySong = null; 
 
         let jumpscareTrack = new Audio();
         let currentJumpscarePhase = 0; 
@@ -430,6 +430,7 @@
             triggerTargetAction('REQUEST_SYNC', true);
         }
 
+        // Fix logic where closed overlay retains sync layout updates
         function closePopup() { document.getElementById('popupOverlay').style.display = 'none'; }
 
         function buildPopupGrids() {
@@ -440,7 +441,7 @@
 
             const timestamp = "?t=" + new Date().getTime();
 
-            // 1. Meme Image Section
+            // 1. Meme Images Layout
             imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
@@ -455,7 +456,7 @@
                 imgGrid.appendChild(item);
             });
 
-            // 2. SFX Section
+            // 2. Sound Effects Layout
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
@@ -471,7 +472,7 @@
                 audioGrid.appendChild(item);
             });
 
-            // 3. Songs Section
+            // 3. Music Songs Section Layout
             songGrid.innerHTML = '';
             validSongsFound.forEach(songFile => {
                 const item = document.createElement('div');
@@ -497,10 +498,7 @@
                 if (getStickyState()) return; 
                 touchActive = true;
                 element.classList.add('active');
-                
-                // Route songs and audio commands properly
-                if (type === 'TRIGGER_SONG') triggerTargetAction('TRIGGER_AUDIO', file);
-                else triggerTargetAction(type, file);
+                triggerTargetAction(type, file);
             };
 
             const pressEnd = (e) => {
@@ -534,18 +532,13 @@
         }
 
         function setStickyLock(type, filename) {
-            if (type === 'TRIGGER') {
-                currentStickyImg = filename;
-                triggerTargetAction('TRIGGER', filename);
-            } else if (type === 'TRIGGER_AUDIO') {
-                currentStickyAudio = filename;
-                triggerTargetAction('TRIGGER_AUDIO', filename);
-            } else if (type === 'TRIGGER_SONG') {
-                currentStickySong = filename;
-                triggerTargetAction('TRIGGER_AUDIO', filename);
-            }
+            if (type === 'TRIGGER') currentStickyImg = filename;
+            else if (type === 'TRIGGER_AUDIO') currentStickyAudio = filename;
+            else if (type === 'TRIGGER_SONG') currentStickySong = filename;
+            
             updateStatusBarUI();
             buildPopupGrids();
+            triggerTargetAction(type, filename);
         }
 
         function clearSingleLock(type) {
@@ -652,10 +645,11 @@
                     currentPrankImage = null;
                     imageElement.src = BASE_URL + defaultImage + timestamp;
                 }
-                else if (data.action === 'TRIGGER_AUDIO') {
+                // Catching both standard audio parameters and song variables
+                else if (data.action === 'TRIGGER_AUDIO' || data.action === 'TRIGGER_SONG') {
                     stopAllAudioAndEffects();
                     flexibleAudioTrack = new Audio(BASE_URL + data.file + timestamp);
-                    flexibleAudioTrack.play().catch(err => console.log(err));
+                    flexibleAudioTrack.play().catch(err => console.log("Playback failed:", err));
                 } 
                 else if (data.action === 'RESET_AUDIO') {
                     stopAllAudioAndEffects();
@@ -678,7 +672,7 @@
             let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
             let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
             
-            // Loop automatically builds track maps from song1.mp3 down through song100.mp3
+            // Generate full map of song filenames from song1.mp3 to song100.mp3
             let discoveredSongs = []; 
             for (let i = 1; i <= 100; i++) {
                 discoveredSongs.push(`song${i}.mp3`);
