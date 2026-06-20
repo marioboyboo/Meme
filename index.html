@@ -6,108 +6,451 @@
     <title>MemeVault - Remote Control</title>
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-        html, body { width: 100%; height: 100%; background-color: #121212; font-family: sans-serif; color: #fff; overflow: hidden; }
-        
-        /* Master Panel */
-        .master-panel { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; background: #1e1e1e; }
-        .btn-container { display: flex; gap: 20px; }
-        .prank-btn { width: 180px; height: 180px; border-radius: 50%; border: none; background: #ff4500; color: white; font-weight: bold; cursor: pointer; }
-        .choose-btn { width: 180px; height: 180px; border-radius: 50%; border: none; background: #333; color: white; font-weight: bold; cursor: pointer; }
-        
-        /* Modal Popup */
-        #memeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; overflow-y: auto; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
-        .grid img { width: 100%; cursor: pointer; border: 2px solid transparent; }
-        .grid img:hover { border: 2px solid #ff4500; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* Setup Menu */
+        .setup-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .setup-screen h1 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .role-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .master-btn { background-color: #ff4500; color: white; }
+        .slave-btn { background-color: #00ffcc; color: #121212; }
+
+        /* Host Panel */
+        .master-panel {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #1e1e1e;
+            gap: 25px;
+        }
+
+        .prank-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: #ff4500;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
+            -webkit-user-drag: none;
+        }
+
+        .choose-btn {
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .choose-btn:hover {
+            background-color: #444;
+            border-color: #00ffcc;
+        }
+
+        .status-text {
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        /* Popup Selection Overlay */
+        .popup-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 20;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .close-popup-btn {
+            padding: 8px 16px;
+            background: #ff4500;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .grid-container {
+            flex: 1;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            padding-bottom: 20px;
+        }
+
+        .grid-item {
+            background: #252525;
+            border: 2px solid #3c3c3c;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .grid-item:active, .grid-item.active {
+            border-color: #00ffcc;
+        }
+
+        .grid-item img {
+            width: 100%;
+            height: 90px;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .grid-item span {
+            font-size: 0.75rem;
+            padding: 4px;
+            color: #aaa;
+        }
 
         /* Display View */
-        .slave-view { display: none; width: 100%; height: 100%; background: black; }
-        .fullscreen-image { width: 100%; height: 100%; object-fit: contain; }
+        .slave-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+            background: black;
+            position: relative;
+        }
+
+        .fullscreen-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            -webkit-user-drag: none;
+        }
+
+        .fullscreen-toggle-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        #preloaderContainer {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-    <div id="setupScreen" style="height:100%; display:flex; justify-content:center; align-items:center;">
-        <button onclick="initRole('master')">Host</button>
-        <button onclick="initRole('slave')">Client</button>
-    </div>
-
-    <div id="masterPanel" class="master-panel">
-        <div class="btn-container">
-            <button id="prankBtn" class="prank-btn">RANDOM</button>
-            <button id="chooseBtn" class="choose-btn">CHOOSE</button>
+    <div id="setupScreen" class="setup-screen">
+        <h1>Select View</h1>
+        <div class="btn-group">
+            <button class="role-btn master-btn" onclick="initRole('master')">Host Controller</button>
+            <button class="role-btn slave-btn" onclick="initRole('slave')">Display Client</button>
         </div>
     </div>
 
-    <div id="memeModal">
-        <h2 style="margin-bottom:20px;">Select a Meme</h2>
-        <div id="memeGrid" class="grid"></div>
+    <div id="masterPanel" class="master-panel">
+        <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
+        <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME</button>
+        <p class="status-text">Hold down PRANK for random, or open the vault to pick a specific layout</p>
+    </div>
+
+    <div id="popupOverlay" class="popup-overlay">
+        <div class="popup-header">
+            <h2>Select Specific Meme</h2>
+            <button class="close-popup-btn" onclick="closePopup()">Close</button>
+        </div>
+        <div id="gridContainer" class="grid-container">
+            </div>
     </div>
 
     <div id="slaveView" class="slave-view">
-        <img id="memeImg" src="meme.jpg" class="fullscreen-image">
+        <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
+        <div id="preloaderContainer"></div>
+        <button class="fullscreen-toggle-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
 
     <script>
-        const MAX_SCAN = 100;
-        const drone = new Scaledrone('ObXNBHan6Vjhwfha');
-        let validImages = ["1.png"];
+        const MAX_SCAN_LIMIT = 100; 
+        const defaultImage = "meme.jpg";
+
+        const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
+        const roomName = 'observable-meme-room';
+        let room;
+
+        let validImagesFound = ["1.png"]; 
+        let currentPrankImage = null;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
-            const room = drone.subscribe('observable-meme-room');
-            
-            if(role === 'master') setupMaster(room);
-            else setupSlave(room);
+            room = drone.subscribe(roomName);
+
+            room.on('open', error => {
+                if (error) return alert("Scaledrone Error: " + error);
+                
+                if (role === 'master') {
+                    setupMaster();
+                } else {
+                    setupSlave();
+                }
+            });
         }
 
-        function setupMaster(room) {
+        // --- HOST CONTROLLER SYSTEM ---
+        function setupMaster() {
             document.getElementById('masterPanel').style.display = 'flex';
+            const prankBtn = document.getElementById('prankBtn');
+
+            // Keep track of the active pool calculated dynamically by active display clients
+            room.on('message', message => {
+                if (message.data.action === 'SYNC_LIST') {
+                    validImagesFound = message.data.list;
+                    buildPopupGrid(); // Instantly update popup contents if list modifications happen live
+                }
+            });
+
+            const startPrank = (e) => {
+                if (e) e.preventDefault();
+                const randomIndex = Math.floor(Math.random() * validImagesFound.length);
+                const randomPng = validImagesFound[randomIndex];
+                triggerTargetImage(randomPng);
+            };
+
+            const stopPrank = (e) => {
+                if (e) e.preventDefault();
+                resetTargetImage();
+            };
+
+            // Main random logic event bindings
+            prankBtn.addEventListener('mousedown', startPrank);
+            window.addEventListener('mouseup', stopPrank);
             
-            // Sync image list
-            room.on('message', m => { if(m.data.action === 'SYNC') validImages = m.data.list; });
+            prankBtn.addEventListener('touchstart', startPrank, { passive: false });
+            prankBtn.addEventListener('touchend', stopPrank, { passive: false });
+            prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
 
-            // Random Button
-            document.getElementById('prankBtn').onmousedown = () => {
-                const img = validImages[Math.floor(Math.random() * validImages.length)];
-                room.publish({ room: 'observable-meme-room', message: { action: 'TRIGGER', img } });
-            };
-            document.getElementById('prankBtn').onmouseup = () => room.publish({ room: 'observable-meme-room', message: { action: 'RESET' } });
-
-            // Choose Button (Open Modal)
-            document.getElementById('chooseBtn').onclick = () => {
-                const grid = document.getElementById('memeGrid');
-                grid.innerHTML = '';
-                validImages.forEach(src => {
-                    const img = document.createElement('img');
-                    img.src = src;
-                    img.onclick = () => {
-                        room.publish({ room: 'observable-meme-room', message: { action: 'TRIGGER', img: src } });
-                        document.getElementById('memeModal').style.display = 'none';
-                    };
-                    grid.appendChild(img);
-                });
-                document.getElementById('memeModal').style.display = 'block';
-            };
+            // Initial view mapping step
+            buildPopupGrid();
         }
 
-        function setupSlave(room) {
+        function triggerTargetImage(imgName) {
+            drone.publish({
+                room: roomName,
+                message: { action: 'TRIGGER', img: imgName }
+            });
+        }
+
+        function resetTargetImage() {
+            drone.publish({
+                room: roomName,
+                message: { action: 'RESET' }
+            });
+        }
+
+        // --- POPUP SYSTEM INTERACTION LOGIC ---
+        function openPopup() {
+            buildPopupGrid();
+            document.getElementById('popupOverlay').style.display = 'flex';
+        }
+
+        function closePopup() {
+            document.getElementById('popupOverlay').style.display = 'none';
+            resetTargetImage();
+        }
+
+        function buildPopupGrid() {
+            const gridContainer = document.getElementById('gridContainer');
+            if (!gridContainer) return;
+
+            gridContainer.innerHTML = '';
+            const timestamp = "?t=" + new Date().getTime();
+
+            validImagesFound.forEach(imgFile => {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                
+                const img = document.createElement('img');
+                img.src = imgFile + timestamp;
+                
+                const label = document.createElement('span');
+                label.innerText = imgFile;
+
+                item.appendChild(img);
+                item.appendChild(label);
+
+                // Desktop trigger
+                item.addEventListener('mousedown', () => { triggerTargetImage(imgFile); item.classList.add('active'); });
+                
+                // Mobile trigger
+                item.addEventListener('touchstart', (e) => { 
+                    e.preventDefault(); 
+                    triggerTargetImage(imgFile); 
+                    item.classList.add('active'); 
+                }, { passive: false });
+
+                gridContainer.appendChild(item);
+            });
+
+            // Ensure releases clear everything regardless of where interaction terminates
+            window.addEventListener('mouseup', clearGridHighlights);
+            window.addEventListener('touchend', clearGridHighlights);
+        }
+
+        function clearGridHighlights() {
+            document.querySelectorAll('.grid-item').forEach(el => el.classList.remove('active'));
+            // If the popup is open, we can choose to reset target image on release if you want instant hold mechanics there too!
+            if (document.getElementById('popupOverlay').style.display === 'flex') {
+                resetTargetImage();
+            }
+        }
+
+        // --- DISPLAY CLIENT SYSTEM ---
+        function setupSlave() {
             document.getElementById('slaveView').style.display = 'block';
-            const imgEl = document.getElementById('memeImg');
+            const imageElement = document.getElementById('memeImg');
+            imageElement.src = defaultImage;
+
+            scanAndRefreshAssets();
+            setInterval(scanAndRefreshAssets, 60000);
+
+            room.on('message', message => {
+                const data = message.data;
+                
+                if (data.action === 'TRIGGER') {
+                    currentPrankImage = data.img;
+                    imageElement.src = currentPrankImage;
+                } else if (data.action === 'RESET') {
+                    currentPrankImage = null;
+                    imageElement.src = defaultImage + "?t=" + new Date().getTime();
+                }
+            });
+        }
+
+        function scanAndRefreshAssets() {
+            const preloaderContainer = document.getElementById('preloaderContainer');
+            const imageElement = document.getElementById('memeImg');
+            const timestamp = "?t=" + new Date().getTime();
             
-            // Scan and Sync
-            let found = [];
-            for(let i=1; i<=MAX_SCAN; i++) {
-                let img = new Image();
-                img.onload = () => { found.push(i+'.png'); room.publish({room:'observable-meme-room', message:{action:'SYNC', list:found}}); };
-                img.src = i+'.png';
+            preloaderContainer.innerHTML = '';
+            let discoveredList = [];
+            let checksCompleted = 0;
+
+            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
+                const filename = i + ".png";
+                const imgCheck = new Image();
+                
+                imgCheck.onload = function() {
+                    discoveredList.push(filename);
+                    const cacheBusterImg = new Image();
+                    cacheBusterImg.src = filename + timestamp;
+                    preloaderContainer.appendChild(cacheBusterImg);
+                    checkFinished();
+                };
+                
+                imgCheck.onerror = function() {
+                    checkFinished();
+                };
+
+                imgCheck.src = filename + timestamp;
             }
 
-            room.on('message', m => {
-                if(m.data.action === 'TRIGGER') imgEl.src = m.data.img;
-                else imgEl.src = 'meme.jpg';
-            });
+            function checkFinished() {
+                checksCompleted++;
+                if (checksCompleted === MAX_SCAN_LIMIT) {
+                    if (discoveredList.length === 0) discoveredList = ["1.png"];
+                    discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
+                    validImagesFound = discoveredList;
+
+                    drone.publish({
+                        room: roomName,
+                        message: { action: 'SYNC_LIST', list: validImagesFound }
+                    });
+
+                    if (!currentPrankImage) {
+                        imageElement.src = defaultImage + timestamp;
+                    }
+                }
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
         }
     </script>
 </body>
