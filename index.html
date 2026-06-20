@@ -429,11 +429,7 @@
         }
 
         function triggerJumpscare() {
-            // Include a unique ID timestamp token so Scaledrone forces a fresh execution thread event
-            drone.publish({
-                room: roomName,
-                message: { action: 'START_JUMPSCARE', instanceId: new Date().getTime() }
-            });
+            triggerTargetAction('START_JUMPSCARE', true);
         }
 
         function triggerTargetAction(actionType, assetName) {
@@ -606,26 +602,22 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
-            let audioTrack1 = null;
-            let audioTrack2 = null;
+            // FIXED ASSET MEMORY LAYERS: Elements are built once and kept forever
+            const jAudio5 = new Audio("5.mp3");
+            const jAudio4 = new Audio("4.mp3");
+            jAudio5.preload = "auto";
+            jAudio4.preload = "auto";
+
+            let flexibleAudioTrack = null;
             let jumpscareTimeout = null;
 
             scanAndRefreshAssets();
             setInterval(scanAndRefreshAssets, 45000);
 
             const stopAllAudioAndEffects = () => {
-                if (audioTrack1) { 
-                    audioTrack1.pause(); 
-                    audioTrack1.src = ""; // Flushes memory channel allocation
-                    audioTrack1.load();
-                    audioTrack1 = null; 
-                }
-                if (audioTrack2) { 
-                    audioTrack2.pause(); 
-                    audioTrack2.src = ""; // Flushes memory channel allocation
-                    audioTrack2.load();
-                    audioTrack2 = null; 
-                }
+                jAudio5.pause(); jAudio5.currentTime = 0;
+                jAudio4.pause(); jAudio4.currentTime = 0;
+                if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
                 if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
                 strobeLayer.classList.remove('active');
             };
@@ -641,21 +633,15 @@
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
 
-                    // Instantly launch fresh execution
-                    audioTrack1 = new Audio("5.mp3" + timestamp);
-                    audioTrack2 = new Audio("4.mp3" + timestamp);
+                    // Instantly trigger from static memory channel
+                    jAudio5.play().catch(err => console.log(err));
 
-                    audioTrack1.preload = "auto";
-                    audioTrack2.preload = "auto";
-
-                    audioTrack1.play().catch(err => console.log("Audio 1 failure: ", err));
-
-                    audioTrack1.onended = function() {
+                    jAudio5.onended = function() {
                         jumpscareTimeout = setTimeout(() => {
-                            strobeLayer.classList.add('active');
-                            audioTrack2.play().catch(err => console.log("Audio 2 failure: ", err));
+                            strobeLayer.classList.add('active'); // Fire flash overlay
+                            jAudio4.play().catch(err => console.log(err)); // Fire 4.mp3 instantly
 
-                            audioTrack2.onended = function() {
+                            jAudio4.onended = function() {
                                 strobeLayer.classList.remove('active');
                             };
                         }, 1000);
@@ -672,8 +658,8 @@
                 }
                 else if (data.action === 'TRIGGER_AUDIO') {
                     stopAllAudioAndEffects();
-                    audioTrack1 = new Audio(data.file + timestamp);
-                    audioTrack1.play().catch(err => console.log(err));
+                    flexibleAudioTrack = new Audio(data.file + timestamp);
+                    flexibleAudioTrack.play().catch(err => console.log(err));
                 } 
                 else if (data.action === 'RESET_AUDIO') {
                     stopAllAudioAndEffects();
