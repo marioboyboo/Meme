@@ -513,4 +513,215 @@
 
             const handleTapLock = (e) => {
                 if (e) e.preventDefault();
-                const now = new
+                const now = new Date().getTime();
+                const timesince = now - lastTap;
+                if (timesince < 300 && timesince > 0) {
+                    if (getStickyState() === file) clearSingleLock(type);
+                    else setStickyLock(type, file);
+                }
+                lastTap = now;
+            };
+
+            element.addEventListener('mousedown', (e) => { handleTapLock(e); pressStart(e); });
+            element.addEventListener('mouseup', pressEnd);
+            element.addEventListener('mouseleave', pressEnd);
+            element.addEventListener('touchstart', (e) => { handleTapLock(e); pressStart(e); }, { passive: false });
+            element.addEventListener('touchend', pressEnd, { passive: false });
+            element.addEventListener('touchcancel', pressEnd, { passive: false });
+        }
+
+        function setStickyLock(type, filename) {
+            if (type === 'TRIGGER') currentStickyImg = filename;
+            else if (type === 'TRIGGER_AUDIO') currentStickyAudio = filename;
+            else if (type === 'TRIGGER_SONG') currentStickySong = filename;
+            
+            updateStatusBarUI();
+            buildPopupGrids();
+            triggerTargetAction(type, filename);
+        }
+
+        function clearSingleLock(type) {
+            if (type === 'TRIGGER') { currentStickyImg = null; resetTargetAction('RESET_IMAGE'); }
+            else if (type === 'TRIGGER_AUDIO' || type === 'TRIGGER_SONG') { 
+                currentStickyAudio = null; 
+                currentStickySong = null; 
+                resetTargetAction('RESET_AUDIO'); 
+            }
+            updateStatusBarUI();
+            buildPopupGrids();
+        }
+
+        function clearAllLocks() {
+            currentStickyImg = null;
+            currentStickyAudio = null;
+            currentStickySong = null;
+            updateStatusBarUI();
+            buildPopupGrids();
+            resetTargetAction('RESET_ALL');
+        }
+
+        function updateStatusBarUI() {
+            const bar = document.getElementById('statusBar');
+            if (currentStickyImg || currentStickyAudio || currentStickySong) {
+                bar.className = 'sticky-status-bar locked';
+                bar.innerText = `🛑 STOP: [${currentStickyImg || ''}] [${currentStickyAudio || ''}] [${currentStickySong || ''}]`;
+            } else {
+                bar.className = 'sticky-status-bar';
+                bar.innerText = 'Double-tap cards to Lock | Click here to Stop All';
+            }
+        }
+
+        // --- DISPLAY CLIENT SYSTEM ---
+        function setupSlave() {
+            const slavePanel = document.getElementById('slaveView');
+            slavePanel.style.display = 'block';
+            const imageElement = document.getElementById('memeImg');
+            imageElement.src = BASE_URL + defaultImage;
+
+            let jumpscareTimeout = null;
+
+            scanAndRefreshAssets();
+            setInterval(scanAndRefreshAssets, 45000);
+
+            const stopAllAudioAndEffects = () => {
+                jumpscareTrack.pause();
+                currentJumpscarePhase = 0;
+                if (gainNode) gainNode.gain.value = 1.0; 
+                if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
+                if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
+                document.getElementById('strobeOverlay').classList.remove('active');
+            };
+
+            jumpscareTrack.onended = function() {
+                const timestamp = "?t=" + new Date().getTime();
+                if (currentJumpscarePhase === 5) {
+                    jumpscareTimeout = setTimeout(() => {
+                        currentJumpscarePhase = 4;
+                        document.getElementById('strobeOverlay').classList.add('active');
+                        if (gainNode) gainNode.gain.value = 5.0; 
+                        jumpscareTrack.src = BASE_URL + "4.mp3" + timestamp;
+                        jumpscareTrack.play().catch(e => console.log(e));
+                    }, 1000);
+                } else if (currentJumpscarePhase === 4) {
+                    document.getElementById('strobeOverlay').classList.remove('active');
+                    if (gainNode) gainNode.gain.value = 1.0; 
+                    currentJumpscarePhase = 0;
+                } else if (currentJumpscarePhase === 8 || currentJumpscarePhase === 9) {
+                    imageElement.src = BASE_URL + defaultImage + timestamp;
+                    currentJumpscarePhase = 0;
+                }
+            };
+
+            room.on('message', message => {
+                const data = message.data;
+                const timestamp = "?t=" + new Date().getTime();
+                
+                if (data.action === 'REQUEST_SYNC') {
+                    scanAndRefreshAssets();
+                }
+                else if (data.action === 'START_JUMPSCARE') {
+                    stopAllAudioAndEffects();
+                    currentJumpscarePhase = 5;
+                    jumpscareTrack.src = BASE_URL + "5.mp3" + timestamp;
+                    jumpscareTrack.play().catch(err => console.log(err));
+                }
+                else if (data.action === 'START_BANANA') {
+                    stopAllAudioAndEffects();
+                    currentJumpscarePhase = 8; 
+                    imageElement.src = BASE_URL + "oh banana.png" + timestamp;
+                    jumpscareTrack.src = BASE_URL + "1.mp3" + timestamp;
+                    jumpscareTrack.play().catch(err => console.log(err));
+                }
+                else if (data.action === 'START_KUNGFU') {
+                    stopAllAudioAndEffects();
+                    currentJumpscarePhase = 9; 
+                    imageElement.src = BASE_URL + "kungfufighting.png" + timestamp;
+                    jumpscareTrack.src = BASE_URL + "6.mp3" + timestamp;
+                    jumpscareTrack.play().catch(err => console.log(err));
+                }
+                else if (data.action === 'TRIGGER') {
+                    currentPrankImage = data.file;
+                    imageElement.src = BASE_URL + currentPrankImage;
+                } 
+                else if (data.action === 'RESET_IMAGE') {
+                    currentPrankImage = null;
+                    imageElement.src = BASE_URL + defaultImage + timestamp;
+                }
+                else if (data.action === 'TRIGGER_AUDIO' || data.action === 'TRIGGER_SONG') {
+                    stopAllAudioAndEffects();
+                    flexibleAudioTrack = new Audio(BASE_URL + data.file + timestamp);
+                    flexibleAudioTrack.play().catch(err => console.log("Playback failed:", err));
+                } 
+                else if (data.action === 'RESET_AUDIO') {
+                    stopAllAudioAndEffects();
+                }
+                else if (data.action === 'RESET_ALL') {
+                    stopAllAudioAndEffects();
+                    currentPrankImage = null;
+                    imageElement.src = BASE_URL + defaultImage + timestamp;
+                }
+            });
+        }
+
+        function scanAndRefreshAssets() {
+            const preloaderContainer = document.getElementById('preloaderContainer');
+            const imageElement = document.getElementById('memeImg');
+            const timestamp = "?t=" + new Date().getTime();
+            
+            if (preloaderContainer) preloaderContainer.innerHTML = '';
+            
+            let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
+            let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
+            let discoveredSongs = ["song1.mp3", "song2.mp3", "song3.mp3", "song4.mp3", "song5.mp3", "song6.mp3"]; 
+
+            discoveredImages.forEach(imgFile => {
+                const preload = new Image();
+                preload.src = BASE_URL + imgFile + timestamp;
+                if (preloaderContainer) preloaderContainer.appendChild(preload);
+            });
+
+            validImagesFound = discoveredImages;
+            validAudioFound = discoveredAudio;
+            validSongsFound = discoveredSongs;
+
+            drone.publish({
+                room: roomName,
+                message: { 
+                    action: 'SYNC_LIST', 
+                    images: validImagesFound, 
+                    audio: validAudioFound,
+                    songs: validSongsFound
+                }
+            });
+
+            if (!currentPrankImage && imageElement) {
+                imageElement.src = BASE_URL + defaultImage + timestamp;
+            }
+        }
+
+        function toggleFullscreen(event) {
+            if (event) event.stopPropagation(); 
+            
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioCtx.createGain();
+                sourceNode = audioCtx.createMediaElementSource(jumpscareTrack);
+                sourceNode.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+            }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            jumpscareTrack.play().then(() => { jumpscareTrack.pause(); }).catch(e => console.log(e));
+
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+    </script>
+</body>
+</html>
