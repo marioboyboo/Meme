@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
+    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -319,6 +320,7 @@
 </head>
 <body>
 
+    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -327,6 +329,7 @@
         </div>
     </div>
 
+    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
@@ -334,10 +337,12 @@
         <p class="status-text">Hold down PRANK for random, use JUMPSCARE for the sequence, or open vault</p>
     </div>
 
+    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
+            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -357,7 +362,8 @@
         </div>
     </div>
 
-    <div id="slaveView" class="slave-view" onclick="unlockAudioContext()">
+    <!-- Display Client View -->
+    <div id="slaveView" class="slave-view">
         <div id="strobeOverlay" class="strobe-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
@@ -379,9 +385,9 @@
         let currentStickyImg = null;
         let currentStickyAudio = null;
 
-        // Global variables for slave audio tracks so they can be unlocked via user click
-        let jAudio5 = null;
-        let jAudio4 = null;
+        // The absolute minimum baseline tracks needed for the jumpscare feature
+        let jumpscareTrack = new Audio();
+        let currentJumpscarePhase = 0; 
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -605,12 +611,6 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
-            // Initialize audio tracks placeholder profiles
-            jAudio5 = new Audio("5.mp3");
-            jAudio4 = new Audio("4.mp3");
-            jAudio5.preload = "auto";
-            jAudio4.preload = "auto";
-
             let flexibleAudioTrack = null;
             let jumpscareTimeout = null;
 
@@ -618,11 +618,26 @@
             setInterval(scanAndRefreshAssets, 45000);
 
             const stopAllAudioAndEffects = () => {
-                if (jAudio5) { jAudio5.pause(); jAudio5.currentTime = 0; }
-                if (jAudio4) { jAudio4.pause(); jAudio4.currentTime = 0; }
+                jumpscareTrack.pause();
+                currentJumpscarePhase = 0;
                 if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
                 if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
                 document.getElementById('strobeOverlay').classList.remove('active');
+            };
+
+            // STRICT JUMPSCARE SEQUENCE ENGINE
+            jumpscareTrack.onended = function() {
+                if (currentJumpscarePhase === 5) {
+                    jumpscareTimeout = setTimeout(() => {
+                        currentJumpscarePhase = 4;
+                        document.getElementById('strobeOverlay').classList.add('active');
+                        jumpscareTrack.src = "4.mp3?t=" + new Date().getTime();
+                        jumpscareTrack.play().catch(e => console.log(e));
+                    }, 1000);
+                } else if (currentJumpscarePhase === 4) {
+                    document.getElementById('strobeOverlay').classList.remove('active');
+                    currentJumpscarePhase = 0;
+                }
             };
 
             room.on('message', message => {
@@ -633,24 +648,12 @@
                     scanAndRefreshAssets();
                 }
                 
+                // ONLY TRACKING CHANGED LOGIC HERE: Stripped down to direct context injection
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
-
-                    if (jAudio5) {
-                        jAudio5.play().catch(err => console.log("Blocked entry: ", err));
-
-                        jAudio5.onended = function() {
-                            jumpscareTimeout = setTimeout(() => {
-                                document.getElementById('strobeOverlay').classList.add('active');
-                                if (jAudio4) {
-                                    jAudio4.play().catch(err => console.log(err));
-                                    jAudio4.onended = function() {
-                                        document.getElementById('strobeOverlay').classList.remove('active');
-                                    };
-                                }
-                            }, 1000);
-                        };
-                    }
+                    currentJumpscarePhase = 5;
+                    jumpscareTrack.src = "5.mp3" + timestamp;
+                    jumpscareTrack.play().catch(err => console.log("Playback engine trace: ", err));
                 }
                 
                 else if (data.action === 'TRIGGER') {
@@ -675,16 +678,6 @@
                     imageElement.src = defaultImage + timestamp;
                 }
             });
-        }
-
-        // CRITICAL FIX: Explicit User Interaction Hook to bypass Autoplay Policies
-        function unlockAudioContext() {
-            if (jAudio5 && jAudio4) {
-                // Flash load track data to verify validation token context
-                jAudio5.load();
-                jAudio4.load();
-                console.log("Audio pipeline authorized by user interaction.");
-            }
         }
 
         function scanAndRefreshAssets() {
@@ -745,8 +738,10 @@
         }
 
         function toggleFullscreen(event) {
-            if (event) event.stopPropagation(); // Prevents double firing context unlocker
-            unlockAudioContext(); 
+            if (event) event.stopPropagation(); 
+            
+            // Prime the pipeline context directly inside the user interface loop
+            jumpscareTrack.play().then(() => { jumpscareTrack.pause(); }).catch(e => console.log(e));
 
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => console.log(err));
