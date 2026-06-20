@@ -66,20 +66,32 @@
             justify-content: center;
             align-items: center;
             background: #1e1e1e;
-            gap: 20px;
+            gap: 15px;
+            overflow-y: auto;
+            padding: 20px 0;
         }
 
         .prank-btn {
-            width: 180px;
-            height: 180px;
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
             border: none;
             background: #ff4500;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
+            flex-shrink: 0;
+        }
+
+        .section-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #888;
+            margin-top: 5px;
+            margin-bottom: -5px;
         }
 
         .action-button-row {
@@ -90,19 +102,24 @@
             max-width: 90%;
         }
 
-        .jumpscare-btn, .banana-btn, .kungfu-btn {
-            padding: 12px 24px;
-            font-size: 1rem;
+        .jumpscare-btn, .banana-btn, .kungfu-btn, .fx-btn {
+            padding: 12px 22px;
+            font-size: 0.95rem;
             font-weight: bold;
             border: 3px solid #fff;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.1s ease;
+            transition: transform 0.1s ease, background-color 0.2s;
         }
 
         .jumpscare-btn { background-color: #ff0000; color: white; box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
         .banana-btn { background-color: #e6b800; color: #121212; box-shadow: 0 0 15px rgba(230, 184, 0, 0.6); }
         .kungfu-btn { background-color: #ffffff; color: #121212; border-color: #ff4500; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); }
+
+        /* FX Buttons styling */
+        .fx-btn { background-color: #222; color: #00ffcc; border-color: #333; }
+        .fx-btn:active { transform: scale(0.95); }
+        .fx-btn.active-toggle { background-color: #00ffcc; color: #121212; border-color: #fff; box-shadow: 0 0 15px rgba(0, 255, 204, 0.6); }
 
         .jumpscare-btn:active, .banana-btn:active, .kungfu-btn:active { transform: scale(0.95); }
 
@@ -116,10 +133,11 @@
             border-radius: 25px;
             cursor: pointer;
             transition: all 0.2s ease;
+            margin-top: 5px;
         }
 
         .choose-btn:hover { background-color: #444; border-color: #00ffcc; }
-        .status-text { color: #888; font-size: 0.9rem; text-align: center; max-width: 80%; }
+        .status-text { color: #666; font-size: 0.85rem; text-align: center; max-width: 80%; }
 
         /* Vault Selection Pop-up Overlay */
         .popup-overlay {
@@ -240,6 +258,7 @@
             height: 100%;
             background: black;
             position: relative;
+            overflow: hidden;
         }
 
         .fullscreen-image {
@@ -247,6 +266,50 @@
             height: 100%;
             object-fit: cover;
             display: block;
+            transition: filter 0.1s ease;
+        }
+
+        /* --- FX Screen Animations --- */
+        @keyframes screenShakeLoop {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-8px, 5px) rotate(-1deg); }
+            20% { transform: translate(6px, -4px) rotate(1deg); }
+            30% { transform: translate(-5px, 2px) rotate(0deg); }
+            40% { transform: translate(7px, 6px) rotate(1deg); }
+            50% { transform: translate(-6px, -5px) rotate(-1deg); }
+            60% { transform: translate(8px, 2px) rotate(0deg); }
+            70% { transform: translate(-4px, 5px) rotate(1deg); }
+            80% { transform: translate(5px, -6px) rotate(-1deg); }
+            90% { transform: translate(-7px, -2px) rotate(1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .fx-shake {
+            animation: screenShakeLoop 0.15s infinite;
+        }
+
+        @keyframes glitchLoop {
+            0% { transform: translate(0,0) skewX(0deg); filter: hue-rotate(0deg) saturate(2); }
+            20% { transform: translate(-4px, 2px) skewX(4deg); filter: hue-rotate(90deg); }
+            40% { transform: translate(5px, -3px) skewX(-5deg); filter: hue-rotate(180deg) invert(0.1); }
+            60% { transform: translate(-2px, -2px) skewX(2deg); filter: hue-rotate(270deg); }
+            80% { transform: translate(4px, 4px) skewX(-2deg); filter: hue-rotate(360deg) saturate(3); }
+            100% { transform: translate(0,0) skewX(0deg); filter: hue-rotate(0deg) saturate(1); }
+        }
+        .fx-glitch {
+            animation: glitchLoop 0.12s infinite;
+        }
+
+        .blackout-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: black;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 60;
+            transition: opacity 0.4s ease;
+        }
+        .blackout-overlay.active {
+            opacity: 1;
         }
 
         .strobe-overlay {
@@ -297,11 +360,21 @@
 
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
+        
+        <div class="section-label">Events</div>
         <div class="action-button-row">
             <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
             <button class="banana-btn" onclick="triggerBanana()">🍌 OOOH BANANA</button>
             <button class="kungfu-btn" onclick="triggerKungFu()">🥋 KUNG FU</button>
         </div>
+
+        <div class="section-label">Screen Effects</div>
+        <div class="action-button-row">
+            <button class="fx-btn" onclick="triggerFx('SHAKE')">📳 SHAKE</button>
+            <button class="fx-btn" onclick="triggerFx('GLITCH')">👾 GLITCH</button>
+            <button id="blackoutToggleBtn" class="fx-btn" onclick="toggleBlackout()">⚫ BLACKOUT</button>
+        </div>
+
         <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
         <p class="status-text">Hold down PRANK for random, use buttons for events, or open vault</p>
     </div>
@@ -331,6 +404,7 @@
 
     <div id="slaveView" class="slave-view">
         <div id="strobeOverlay" class="strobe-overlay"></div>
+        <div id="blackoutOverlay" class="blackout-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
         <button class="fullscreen-toggle-btn" onclick="toggleFullscreen(event)">⛶ Fullscreen</button>
@@ -354,6 +428,7 @@
         let currentStickyImg = null;
         let currentStickyAudio = null;
         let currentStickySong = null; 
+        let isBlackoutActive = false;
 
         let jumpscareTrack = new Audio();
         let currentJumpscarePhase = 0; 
@@ -385,6 +460,14 @@
                     validSongsFound = message.data.songs || [];
                     buildPopupGrids();
                 }
+                else if (message.data.action === 'BLACKOUT_STATUS') {
+                    isBlackoutActive = message.data.state;
+                    const btn = document.getElementById('blackoutToggleBtn');
+                    if(btn) {
+                        if(isBlackoutActive) btn.classList.add('active-toggle');
+                        else btn.classList.remove('active-toggle');
+                    }
+                }
             });
 
             triggerTargetAction('REQUEST_SYNC', true);
@@ -415,6 +498,12 @@
         function triggerJumpscare() { triggerTargetAction('START_JUMPSCARE', true); }
         function triggerBanana() { triggerTargetAction('START_BANANA', true); }
         function triggerKungFu() { triggerTargetAction('START_KUNGFU', true); }
+        function triggerFx(effectName) { triggerTargetAction('TRIGGER_FX', effectName); }
+        
+        function toggleBlackout() {
+            isBlackoutActive = !isBlackoutActive;
+            triggerTargetAction('TOGGLE_BLACKOUT', isBlackoutActive);
+        }
 
         function triggerTargetAction(actionType, assetName) {
             drone.publish({ room: roomName, message: { action: actionType, file: assetName } });
@@ -555,6 +644,8 @@
             currentStickyImg = null;
             currentStickyAudio = null;
             currentStickySong = null;
+            isBlackoutActive = false;
+            triggerTargetAction('TOGGLE_BLACKOUT', false);
             updateStatusBarUI();
             buildPopupGrids();
             resetTargetAction('RESET_ALL');
@@ -580,6 +671,7 @@
 
             let jumpscareAudioTimeout = null;
             let strobeDelayTimeout = null;
+            let fxTimeout = null;
 
             const stopAllAudioAndEffects = () => {
                 jumpscareTrack.pause();
@@ -588,22 +680,21 @@
                 if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
                 if (jumpscareAudioTimeout) { clearTimeout(jumpscareAudioTimeout); jumpscareAudioTimeout = null; }
                 if (strobeDelayTimeout) { clearTimeout(strobeDelayTimeout); strobeDelayTimeout = null; }
+                if (fxTimeout) { clearTimeout(fxTimeout); fxTimeout = null; }
                 document.getElementById('strobeOverlay').classList.remove('active');
+                imageElement.classList.remove('fx-shake', 'fx-glitch');
             };
 
             jumpscareTrack.onended = function() {
                 const timestamp = "?t=" + new Date().getTime();
                 if (currentJumpscarePhase === 5) {
-                    // Play 4.mp3 after exactly 0.5 seconds (500ms)
                     jumpscareAudioTimeout = setTimeout(() => {
                         currentJumpscarePhase = 4;
-                        // Blast volume up for the scary part!
                         if (gainNode) gainNode.gain.value = 5.0; 
                         jumpscareTrack.src = BASE_URL + "4.mp3" + timestamp;
                         jumpscareTrack.play().catch(e => console.log(e));
                     }, 500);
 
-                    // Strobe lights start 0.5s after 4.mp3 hits (500ms + 500ms)
                     strobeDelayTimeout = setTimeout(() => {
                         if (currentJumpscarePhase === 4) {
                             document.getElementById('strobeOverlay').classList.add('active');
@@ -626,17 +717,12 @@
                 
                 if (data.action === 'REQUEST_SYNC') {
                     scanAndRefreshAssets();
+                    drone.publish({ room: roomName, message: { action: 'BLACKOUT_STATUS', state: document.getElementById('blackoutOverlay').classList.contains('active') } });
                 }
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 5;
-                    
-                    // Make sure the audio node is built first
-                    if (gainNode) {
-                        // Lower the volume of 5.mp3 down to 30% so it acts as a quiet buildup
-                        gainNode.gain.value = 0.3; 
-                    }
-                    
+                    if (gainNode) gainNode.gain.value = 0.3; 
                     jumpscareTrack.src = BASE_URL + "5.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
@@ -670,9 +756,27 @@
                 else if (data.action === 'RESET_AUDIO') {
                     stopAllAudioAndEffects();
                 }
+                else if (data.action === 'TRIGGER_FX') {
+                    if (fxTimeout) clearTimeout(fxTimeout);
+                    imageElement.classList.remove('fx-shake', 'fx-glitch');
+                    
+                    if (data.file === 'SHAKE') {
+                        imageElement.classList.add('fx-shake');
+                        fxTimeout = setTimeout(() => imageElement.classList.remove('fx-shake'), 1500);
+                    } else if (data.file === 'GLITCH') {
+                        imageElement.classList.add('fx-glitch');
+                        fxTimeout = setTimeout(() => imageElement.classList.remove('fx-glitch'), 2000);
+                    }
+                }
+                else if (data.action === 'TOGGLE_BLACKOUT') {
+                    const blackout = document.getElementById('blackoutOverlay');
+                    if(data.file) blackout.classList.add('active');
+                    else blackout.classList.remove('active');
+                }
                 else if (data.action === 'RESET_ALL') {
                     stopAllAudioAndEffects();
                     currentPrankImage = null;
+                    document.getElementById('blackoutOverlay').classList.remove('active');
                     imageElement.src = BASE_URL + defaultImage + timestamp;
                 }
             });
