@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
+    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -319,6 +320,7 @@
 </head>
 <body>
 
+    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -327,6 +329,7 @@
         </div>
     </div>
 
+    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
@@ -334,10 +337,12 @@
         <p class="status-text">Hold down PRANK for random, use JUMPSCARE for the sequence, or open vault</p>
     </div>
 
+    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
+            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -357,6 +362,7 @@
         </div>
     </div>
 
+    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <div id="strobeOverlay" class="strobe-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
@@ -602,23 +608,18 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
-            let activeAudioTrack = null;
-            let prebufferedAudio4 = null; // Background stream memory slot
+            let audioTrack1 = null;
+            let audioTrack2 = null;
+            let jumpscareTimeout = null;
 
             scanAndRefreshAssets();
             setInterval(scanAndRefreshAssets, 45000);
 
-            const stopActiveAudio = () => {
-                if (activeAudioTrack) {
-                    activeAudioTrack.pause();
-                    activeAudioTrack.onended = null;
-                    activeAudioTrack = null;
-                }
-                if (prebufferedAudio4) {
-                    prebufferedAudio4.pause();
-                    prebufferedAudio4.onended = null;
-                    prebufferedAudio4 = null;
-                }
+            const stopAllAudioAndEffects = () => {
+                if (audioTrack1) { audioTrack1.pause(); audioTrack1 = null; }
+                if (audioTrack2) { audioTrack2.pause(); audioTrack2 = null; }
+                if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
+                strobeLayer.classList.remove('active');
             };
 
             room.on('message', message => {
@@ -629,34 +630,27 @@
                     scanAndRefreshAssets();
                 }
                 
-                // Jumpscare Sequence Execution Engine
                 else if (data.action === 'START_JUMPSCARE') {
-                    stopActiveAudio();
-                    strobeLayer.classList.remove('active');
+                    stopAllAudioAndEffects();
 
-                    // 1. ADVANCED PRE-BUFFERING STATE
-                    // While 5.mp3 starts, immediately establish a full background buffer stream for 4.mp3
-                    prebufferedAudio4 = new Audio("4.mp3" + timestamp);
-                    prebufferedAudio4.preload = "auto";
-                    prebufferedAudio4.load(); // Forces immediate cache download block
+                    // INSTANT DUAL INTIALIZATION
+                    // Build both objects simultaneously right now so they load together perfectly
+                    audioTrack1 = new Audio("5.mp3" + timestamp);
+                    audioTrack2 = new Audio("4.mp3" + timestamp);
 
-                    // Play 5.mp3 immediately
-                    activeAudioTrack = new Audio("5.mp3" + timestamp);
-                    activeAudioTrack.play().catch(err => console.log(err));
+                    audioTrack1.preload = "auto";
+                    audioTrack2.preload = "auto";
 
-                    // Track end of 5.mp3
-                    activeAudioTrack.onended = function() {
-                        // Wait exactly 1 second
-                        setTimeout(() => {
-                            // Turn on strobe overlay instantly
-                            strobeLayer.classList.add('active');
-                            
-                            // Elevate prebuffered audio out of memory straight into execution loop
-                            activeAudioTrack = prebufferedAudio4;
-                            activeAudioTrack.play().catch(err => console.log(err));
+                    // Fire track 1
+                    audioTrack1.play().catch(err => console.log(err));
 
-                            // Clean up when sequence finishes completely
-                            activeAudioTrack.onended = function() {
+                    audioTrack1.onended = function() {
+                        // Safe 1-second interval transition
+                        jumpscareTimeout = setTimeout(() => {
+                            strobeLayer.classList.add('active'); // Fire lights
+                            audioTrack2.play().catch(err => console.log(err)); // Fire track 2 instantly
+
+                            audioTrack2.onended = function() {
                                 strobeLayer.classList.remove('active');
                             };
                         }, 1000);
@@ -672,16 +666,15 @@
                     imageElement.src = defaultImage + timestamp;
                 }
                 else if (data.action === 'TRIGGER_AUDIO') {
-                    stopActiveAudio();
-                    activeAudioTrack = new Audio(data.file + timestamp);
-                    activeAudioTrack.play().catch(err => console.log(err));
+                    stopAllAudioAndEffects();
+                    audioTrack1 = new Audio(data.file + timestamp);
+                    audioTrack1.play().catch(err => console.log(err));
                 } 
                 else if (data.action === 'RESET_AUDIO') {
-                    stopActiveAudio();
+                    stopAllAudioAndEffects();
                 }
                 else if (data.action === 'RESET_ALL') {
-                    stopActiveAudio();
-                    strobeLayer.classList.remove('active');
+                    stopAllAudioAndEffects();
                     currentPrankImage = null;
                     imageElement.src = defaultImage + timestamp;
                 }
