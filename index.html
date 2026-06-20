@@ -125,7 +125,7 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #333;
             flex-shrink: 0;
-            position: relative;
+            gap: 15px;
         }
 
         .close-popup-btn {
@@ -138,52 +138,34 @@
             cursor: pointer;
         }
 
-        /* NEW Dynamic Turquoise Stay On target area */
-        .stay-drop-zone {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
+        /* Sticky Control Header Box */
+        .sticky-status-bar {
+            flex: 1;
+            background: #111;
+            border: 2px dashed #333;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #666;
+            transition: all 0.2s ease;
+        }
+
+        .sticky-status-bar.locked {
             background: #00ffcc;
             color: #121212;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            border-style: solid;
+            border-color: #00ffcc;
             font-weight: bold;
-            font-size: 0.85rem;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            opacity: 0;
-            transform: scale(0.5);
-            pointer-events: none;
-        }
-
-        .stay-drop-zone.visible {
-            opacity: 1;
-            transform: scale(1);
-            pointer-events: auto;
-        }
-
-        .stay-drop-zone.hovered {
-            background: #00b38f;
-            transform: scale(1.15);
-            box-shadow: 0 0 25px rgba(0, 255, 204, 0.8);
-        }
-
-        .stay-drop-zone.locked {
-            opacity: 1;
-            transform: scale(1);
-            pointer-events: auto;
-            background: #ff4500;
-            color: white;
-            box-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
             cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
         }
 
         /* Split Window Layout Panels */
         .vault-split-container {
             display: flex;
             flex-direction: column;
-            height: calc(100% - 85px);
+            height: calc(100% - 75px);
             gap: 15px;
             margin-top: 15px;
         }
@@ -218,18 +200,21 @@
             border: 2px solid #3c3c3c;
             border-radius: 8px;
             overflow: hidden;
-            cursor: grab;
+            cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             position: relative;
-            touch-action: none; /* Block default scrolling mechanics during drag actions */
         }
 
         .grid-item:active, .grid-item.active {
             border-color: #00ffcc;
             background: #2a2a2a;
-            cursor: grabbing;
+        }
+
+        .grid-item.sticky-active {
+            border-color: #ff4500 !important;
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
         }
 
         .grid-item img {
@@ -257,21 +242,6 @@
             color: #aaa;
             font-weight: bold;
             pointer-events: none;
-        }
-
-        /* Floating clone feedback graphic layout during drag */
-        #dragProxy {
-            display: none;
-            position: fixed;
-            width: 90px;
-            height: 65px;
-            background: rgba(0, 255, 204, 0.25);
-            border: 2px solid #00ffcc;
-            border-radius: 6px;
-            pointer-events: none;
-            z-index: 9999;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            transform: translate(-50%, -50%);
         }
 
         /* Display View */
@@ -312,8 +282,6 @@
 </head>
 <body>
 
-    <div id="dragProxy"></div>
-
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -332,9 +300,10 @@
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
-            <div id="stayDropZone" class="stay-drop-zone">STAY</div>
-            
-            <div style="width:75px;"></div> </div>
+            <div id="statusBar" class="sticky-status-bar" onclick="clearStickyLock()">
+                Hold to play / Double-tap to Lock
+            </div>
+        </div>
         <div class="vault-split-container">
             
             <div class="vault-section">
@@ -368,10 +337,9 @@
         let validAudioFound = []; 
         let currentPrankImage = null;
 
-        // Sticky Engine State Vectors
+        // Sticky Vector Engine States
         let isStickyLocked = false;
-        let activeDragData = null; // Stores target info if dragging occurs
-        let dragTrackingActive = false;
+        let currentStickyFile = null;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -417,19 +385,6 @@
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
 
-            // Setup the Dropzone click tracking listener
-            const dropZone = document.getElementById('stayDropZone');
-            dropZone.addEventListener('click', () => {
-                if (isStickyLocked) {
-                    clearStickyLock();
-                }
-            });
-            dropZone.addEventListener('touchend', () => {
-                if (isStickyLocked) {
-                    clearStickyLock();
-                }
-            });
-
             buildPopupGrids();
         }
 
@@ -447,15 +402,37 @@
             });
         }
 
+        function setStickyLock(type, filename) {
+            isStickyLocked = true;
+            currentStickyFile = filename;
+
+            // Highlight status indicator
+            const bar = document.getElementById('statusBar');
+            bar.className = 'sticky-status-bar locked';
+            bar.innerText = `🛑 LOCKED: ${filename} (Click here to stop)`;
+
+            // Visual check marking cards
+            document.querySelectorAll('.grid-item').forEach(el => {
+                el.classList.remove('sticky-active');
+                if (el.dataset.filename === filename) el.classList.add('sticky-active');
+            });
+
+            triggerTargetAction(type, filename);
+        }
+
         function clearStickyLock() {
             isStickyLocked = false;
-            const dropZone = document.getElementById('stayDropZone');
-            dropZone.className = 'stay-drop-zone';
-            dropZone.innerText = 'STAY';
+            currentStickyFile = null;
+
+            const bar = document.getElementById('statusBar');
+            bar.className = 'sticky-status-bar';
+            bar.innerText = 'Hold to play / Double-tap to Lock';
+
+            document.querySelectorAll('.grid-item').forEach(el => el.classList.remove('sticky-active'));
             resetTargetAction('RESET');
         }
 
-        // --- SPLIT GRIDS POPUP INTERACTION GENERATOR ---
+        // --- POPUP INTERACTION GENERATOR ---
         function openPopup() {
             buildPopupGrids();
             document.getElementById('popupOverlay').style.display = 'flex';
@@ -478,6 +455,9 @@
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
+                item.dataset.filename = imgFile;
+                if (currentStickyFile === imgFile) item.classList.add('sticky-active');
+
                 const img = document.createElement('img');
                 img.src = imgFile + timestamp;
                 const label = document.createElement('span');
@@ -485,7 +465,7 @@
                 item.appendChild(img);
                 item.appendChild(label);
 
-                attachDragAndHoldListeners(item, 'TRIGGER', imgFile);
+                attachHoldAndDoubleTapListeners(item, 'TRIGGER', imgFile);
                 imgGrid.appendChild(item);
             });
 
@@ -494,6 +474,9 @@
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
+                item.dataset.filename = audioFile;
+                if (currentStickyFile === audioFile) item.classList.add('sticky-active');
+
                 const iconBox = document.createElement('div');
                 iconBox.className = 'audio-icon-box';
                 iconBox.innerText = '🎵';
@@ -502,113 +485,65 @@
                 item.appendChild(iconBox);
                 item.appendChild(label);
 
-                attachDragAndHoldListeners(item, 'TRIGGER_AUDIO', audioFile);
+                attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', audioFile);
                 audioGrid.appendChild(item);
             });
         }
 
-        // CUSTOM GESTURE ENGINE: Handles unified click-hold AND drag-to-sticky operations smoothly
-        function attachDragAndHoldListeners(element, type, file) {
-            let startX = 0;
-            let startY = 0;
-            let currentX = 0;
-            let currentY = 0;
-            let holdTriggered = false;
+        // Clean tap/click engine targeting mobile behaviors accurately
+        function attachHoldAndDoubleTapListeners(element, type, file) {
+            let lastTap = 0;
+            let touchActive = false;
 
-            const onStart = (clientX, clientY) => {
+            // --- Press & Hold Down Mechanics ---
+            const pressStart = (e) => {
+                if (e) e.preventDefault();
                 if (isStickyLocked) return;
-                
-                startX = clientX;
-                startY = clientY;
-                holdTriggered = true;
-                dragTrackingActive = true;
-                
-                activeDragData = { type: type, file: file, element: element };
+                touchActive = true;
                 element.classList.add('active');
-
-                // Trigger audio/image display immediately on touch down
                 triggerTargetAction(type, file);
-
-                // Show turquoise Dropzone top indicator
-                document.getElementById('stayDropZone').className = 'stay-drop-zone visible';
-
-                // Setup global follow loops
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onEnd);
-                window.addEventListener('touchmove', onTouchMove, { passive: false });
-                window.addEventListener('touchend', onEnd);
             };
 
-            const onMove = (clientX, clientY) => {
-                if (!dragTrackingActive) return;
-                
-                currentX = clientX;
-                currentY = clientY;
-
-                // Render customized tracking feedback bubble under pointer coordinates
-                const proxy = document.getElementById('dragProxy');
-                proxy.style.display = 'block';
-                proxy.style.left = currentX + 'px';
-                proxy.style.top = currentY + 'px';
-
-                // Check collision bounds with the turquoise zone
-                const dropZone = document.getElementById('stayDropZone');
-                const dzRect = dropZone.getBoundingClientRect();
-
-                if (currentX >= dzRect.left && currentX <= dzRect.right &&
-                    currentY >= dzRect.top && currentY <= dzRect.bottom) {
-                    dropZone.classList.add('hovered');
-                } else {
-                    dropZone.classList.remove('hovered');
-                }
-            };
-
-            const onTouchMove = (e) => {
-                if (e.touches.length > 0) {
-                    onMove(e.touches[0].clientX, e.touches[0].clientY);
-                }
-            };
-
-            const onEnd = (e) => {
-                window.removeEventListener('mousemove', onMove);
-                window.removeEventListener('mouseup', onEnd);
-                window.removeEventListener('touchmove', onTouchMove);
-                window.removeEventListener('touchend', onEnd);
-
-                if (!dragTrackingActive) return;
-                dragTrackingActive = false;
-                
+            const pressEnd = (e) => {
+                if (e) e.preventDefault();
+                if (!touchActive) return;
+                touchActive = false;
                 element.classList.remove('active');
-                document.getElementById('dragProxy').style.display = 'none';
+                if (!isStickyLocked) resetTargetAction('RESET');
+            };
 
-                const dropZone = document.getElementById('stayDropZone');
-                const dzRect = dropZone.getBoundingClientRect();
-
-                // Did the user drop it inside the dropzone?
-                if (currentX >= dzRect.left && currentX <= dzRect.right &&
-                    currentY >= dzRect.top && currentY <= dzRect.bottom) {
-                    
-                    // LOCK SYSTEM IN STICKY STATE
-                    isStickyLocked = true;
-                    dropZone.className = 'stay-drop-zone locked';
-                    dropZone.innerText = '🛑 STOP';
-                    
-                    // Enforce live execution keeps running
-                    triggerTargetAction(type, file);
-                } else {
-                    // Normal release: hide zone indicator and clear display path
-                    if (!isStickyLocked) {
-                        dropZone.className = 'stay-drop-zone';
-                        resetTargetAction('RESET');
+            // --- Double Tap / Click Mechanics ---
+            const handleTapLock = (e) => {
+                if (e) e.preventDefault();
+                const now = new Date().getTime();
+                const timesince = now - lastTap;
+                
+                if (timesince < 300 && timesince > 0) {
+                    // Double Tap Recognized!
+                    if (isStickyLocked && currentStickyFile === file) {
+                        clearStickyLock();
+                    } else {
+                        setStickyLock(type, file);
                     }
                 }
+                lastTap = now;
             };
 
-            // Bind raw entry parameters safely across pointer architectures
-            element.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
+            // Mouse Attachments
+            element.addEventListener('mousedown', (e) => {
+                handleTapLock(e);
+                pressStart(e);
+            });
+            element.addEventListener('mouseup', pressEnd);
+            element.addEventListener('mouseleave', pressEnd);
+
+            // Touch Attachments
             element.addEventListener('touchstart', (e) => {
-                if(e.touches.length > 0) onStart(e.touches[0].clientX, e.touches[0].clientY);
+                handleTapLock(e);
+                pressStart(e);
             }, { passive: false });
+            element.addEventListener('touchend', pressEnd, { passive: false });
+            element.addEventListener('touchcancel', pressEnd, { passive: false });
         }
 
         // --- DISPLAY CLIENT SYSTEM ---
