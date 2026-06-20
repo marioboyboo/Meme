@@ -327,7 +327,6 @@
 
     <script>
         const MAX_SCAN_LIMIT = 100; 
-        const BATCH_SIZE = 10; // Number of simultaneous network checks allowed at one time
         const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
@@ -340,7 +339,6 @@
 
         let currentStickyImg = null;
         let currentStickyAudio = null;
-        let isScanning = false;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -562,7 +560,7 @@
             let activeAudioTrack = null;
 
             scanAndRefreshAssets();
-            setInterval(scanAndRefreshAssets, 60000);
+            setInterval(scanAndRefreshAssets, 45000);
 
             room.on('message', message => {
                 const data = message.data;
@@ -583,7 +581,7 @@
                         activeAudioTrack.pause();
                     }
                     activeAudioTrack = new Audio(data.file + "?t=" + new Date().getTime());
-                    activeAudioTrack.play().catch(err => console.log(err));
+                    activeAudioTrack.play().catch(err => console.log("Audio block bypass state handled:", err));
                 } 
                 else if (data.action === 'RESET_AUDIO') {
                     if (activeAudioTrack) {
@@ -602,11 +600,8 @@
             });
         }
 
-        // Safe Batch-by-Batch Scanner to prevent browsers dropping requests
+        // Lightweight, unblockable metadata scanner loop
         function scanAndRefreshAssets() {
-            if (isScanning) return;
-            isScanning = true;
-
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
             const timestamp = "?t=" + new Date().getTime();
@@ -615,11 +610,12 @@
             let discoveredImages = [];
             let discoveredAudio = [];
             
-            let currentIndex = 1;
+            let totalChecksExpected = MAX_SCAN_LIMIT * 2;
+            let checksCompleted = 0;
 
-            function processNextBatch() {
-                if (currentIndex > MAX_SCAN_LIMIT) {
-                    // All 100 items checked safely! Wrap up.
+            const checkFinished = () => {
+                checksCompleted++;
+                if (checksCompleted === totalChecksExpected) {
                     if (discoveredImages.length === 0) discoveredImages = ["1.png"];
                     discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
                     discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
@@ -635,51 +631,33 @@
                     if (!currentPrankImage && imageElement) {
                         imageElement.src = defaultImage + timestamp;
                     }
-                    isScanning = false;
-                    return;
                 }
+            };
 
-                let checksInThisBatch = 0;
-                let targetsExpected = 0;
-
-                const onTargetChecked = () => {
-                    checksInThisBatch++;
-                    if (checksInThisBatch === targetsExpected) {
-                        currentIndex += BATCH_SIZE;
-                        processNextBatch(); // Move safely to the next group of 10
-                    }
+            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
+                // Image Validation Pass
+                const imgFilename = i + ".png";
+                const imgCheck = new Image();
+                imgCheck.onload = function() {
+                    discoveredImages.push(imgFilename);
+                    const preload = new Image(); preload.src = imgFilename + timestamp;
+                    preloaderContainer.appendChild(preload);
+                    checkFinished();
                 };
+                imgCheck.onerror = checkFinished;
+                imgCheck.src = imgFilename + timestamp;
 
-                // Limit lookups to small safe ranges
-                let endLimit = Math.min(currentIndex + BATCH_SIZE - 1, MAX_SCAN_LIMIT);
-                targetsExpected = (endLimit - currentIndex + 1) * 2;
-
-                for (let i = currentIndex; i <= endLimit; i++) {
-                    // Check Image
-                    const imgFilename = i + ".png";
-                    const imgCheck = new Image();
-                    imgCheck.onload = function() {
-                        discoveredImages.push(imgFilename);
-                        const preload = new Image(); preload.src = imgFilename + timestamp;
-                        preloaderContainer.appendChild(preload);
-                        onTargetChecked();
-                    };
-                    imgCheck.onerror = onTargetChecked;
-                    imgCheck.src = imgFilename + timestamp;
-
-                    // Check Audio Track
-                    const audioFilename = i + ".mp3";
-                    const audioCheck = new Audio();
-                    audioCheck.oncanplaythrough = function() {
-                        if (!discoveredAudio.includes(audioFilename)) discoveredAudio.push(audioFilename);
-                        onTargetChecked();
-                    };
-                    audioCheck.onerror = onTargetChecked;
-                    audioCheck.src = audioFilename + timestamp;
-                }
+                // Safe Unblocked Audio Validation Pass
+                const audioFilename = i + ".mp3";
+                const audioCheck = new Audio();
+                audioCheck.preload = "metadata"; // Prevents user interaction errors from stalling execution
+                audioCheck.onloadedmetadata = function() {
+                    discoveredAudio.push(audioFilename);
+                    checkFinished();
+                };
+                audioCheck.onerror = checkFinished;
+                audioCheck.src = audioFilename + timestamp;
             }
-
-            processNextBatch();
         }
 
         function toggleFullscreen() {
