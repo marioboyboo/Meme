@@ -353,6 +353,7 @@
 
         let currentStickyImg = null;
         let currentStickyAudio = null;
+        let currentStickySong = null; // Dedicated tracker for independent song slots
 
         let jumpscareTrack = new Audio();
         let currentJumpscarePhase = 0; 
@@ -363,7 +364,6 @@
         let flexibleAudioTrack = null; 
 
         function initRole(role) {
-            document.getElementById('setupScreen').style.none = 'none';
             document.getElementById('setupScreen').remove(); 
             room = drone.subscribe(roomName);
 
@@ -440,6 +440,7 @@
 
             const timestamp = "?t=" + new Date().getTime();
 
+            // 1. Meme Image Section
             imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
@@ -454,6 +455,7 @@
                 imgGrid.appendChild(item);
             });
 
+            // 2. SFX Section
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
@@ -469,10 +471,11 @@
                 audioGrid.appendChild(item);
             });
 
+            // 3. Songs Section
             songGrid.innerHTML = '';
             validSongsFound.forEach(songFile => {
                 const item = document.createElement('div');
-                item.className = currentStickyAudio === songFile ? 'grid-item sticky-active' : 'grid-item';
+                item.className = currentStickySong === songFile ? 'grid-item sticky-active' : 'grid-item';
                 const iconBox = document.createElement('div');
                 iconBox.className = 'song-icon-box';
                 iconBox.innerText = '🎵';
@@ -480,7 +483,7 @@
                 label.innerText = songFile;
                 item.appendChild(iconBox);
                 item.appendChild(label);
-                attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', songFile, () => currentStickyAudio);
+                attachHoldAndDoubleTapListeners(item, 'TRIGGER_SONG', songFile, () => currentStickySong);
                 songGrid.appendChild(item);
             });
         }
@@ -488,15 +491,16 @@
         function attachHoldAndDoubleTapListeners(element, type, file, getStickyState) {
             let lastTap = 0;
             let touchActive = false;
-            const isImage = (type === 'TRIGGER');
-            const resetCommand = isImage ? 'RESET_IMAGE' : 'RESET_AUDIO';
-
+            
             const pressStart = (e) => {
                 if (e) e.preventDefault();
                 if (getStickyState()) return; 
                 touchActive = true;
                 element.classList.add('active');
-                triggerTargetAction(type, file);
+                
+                // Route songs and audio commands properly
+                if (type === 'TRIGGER_SONG') triggerTargetAction('TRIGGER_AUDIO', file);
+                else triggerTargetAction(type, file);
             };
 
             const pressEnd = (e) => {
@@ -504,7 +508,10 @@
                 if (!touchActive) return;
                 touchActive = false;
                 element.classList.remove('active');
-                if (!getStickyState()) resetTargetAction(resetCommand);
+                if (!getStickyState()) {
+                    const resetCommand = (type === 'TRIGGER') ? 'RESET_IMAGE' : 'RESET_AUDIO';
+                    resetTargetAction(resetCommand);
+                }
             };
 
             const handleTapLock = (e) => {
@@ -527,16 +534,24 @@
         }
 
         function setStickyLock(type, filename) {
-            if (type === 'TRIGGER') currentStickyImg = filename;
-            else currentStickyAudio = filename;
+            if (type === 'TRIGGER') {
+                currentStickyImg = filename;
+                triggerTargetAction('TRIGGER', filename);
+            } else if (type === 'TRIGGER_AUDIO') {
+                currentStickyAudio = filename;
+                triggerTargetAction('TRIGGER_AUDIO', filename);
+            } else if (type === 'TRIGGER_SONG') {
+                currentStickySong = filename;
+                triggerTargetAction('TRIGGER_AUDIO', filename);
+            }
             updateStatusBarUI();
             buildPopupGrids();
-            triggerTargetAction(type, filename);
         }
 
         function clearSingleLock(type) {
             if (type === 'TRIGGER') { currentStickyImg = null; resetTargetAction('RESET_IMAGE'); }
-            else { currentStickyAudio = null; resetTargetAction('RESET_AUDIO'); }
+            else if (type === 'TRIGGER_AUDIO') { currentStickyAudio = null; resetTargetAction('RESET_AUDIO'); }
+            else if (type === 'TRIGGER_SONG') { currentStickySong = null; resetTargetAction('RESET_AUDIO'); }
             updateStatusBarUI();
             buildPopupGrids();
         }
@@ -544,6 +559,7 @@
         function clearAllLocks() {
             currentStickyImg = null;
             currentStickyAudio = null;
+            currentStickySong = null;
             updateStatusBarUI();
             buildPopupGrids();
             resetTargetAction('RESET_ALL');
@@ -551,9 +567,9 @@
 
         function updateStatusBarUI() {
             const bar = document.getElementById('statusBar');
-            if (currentStickyImg || currentStickyAudio) {
+            if (currentStickyImg || currentStickyAudio || currentStickySong) {
                 bar.className = 'sticky-status-bar locked';
-                bar.innerText = `🛑 STOP: [${currentStickyImg || ''}] [${currentStickyAudio || ''}]`;
+                bar.innerText = `🛑 STOP: [${currentStickyImg || ''}] [${currentStickyAudio || ''}] [${currentStickySong || ''}]`;
             } else {
                 bar.className = 'sticky-status-bar';
                 bar.innerText = 'Double-tap cards to Lock | Click here to Stop All';
@@ -661,7 +677,12 @@
             
             let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
             let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
+            
+            // Loop automatically builds track maps from song1.mp3 down through song100.mp3
             let discoveredSongs = []; 
+            for (let i = 1; i <= 100; i++) {
+                discoveredSongs.push(`song${i}.mp3`);
+            }
 
             discoveredImages.forEach(imgFile => {
                 const preload = new Image();
@@ -691,7 +712,6 @@
         function toggleFullscreen(event) {
             if (event) event.stopPropagation(); 
             
-            // AudioContext checks out safe now
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
