@@ -219,13 +219,15 @@
             height: calc(100% - 75px);
             gap: 15px;
             margin-top: 15px;
+            overflow-y: auto; /* Allow complete layout scroll if columns stack up */
         }
 
         .vault-section {
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 0;
+            min-height: 180px;
+            margin-bottom: 5px;
         }
 
         .vault-section h3 {
@@ -287,12 +289,25 @@
             pointer-events: none;
         }
 
+        .song-icon-box {
+            width: 100%;
+            height: 75px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #112222;
+            font-size: 2rem;
+            color: #00ffcc;
+            pointer-events: none;
+        }
+
         .grid-item span {
             font-size: 0.75rem;
             padding: 6px;
             color: #aaa;
             font-weight: bold;
             pointer-events: none;
+            text-align: center;
         }
 
         /* Display View */
@@ -388,8 +403,13 @@
             </div>
 
             <div class="vault-section">
-                <h3>🔊 Specific MP3 Audio Tracks</h3>
+                <h3>🔊 Quick SFX Tracks</h3>
                 <div id="audioGridContainer" class="grid-container"></div>
+            </div>
+
+            <div class="vault-section">
+                <h3>🎵 Full Music Songs</h3>
+                <div id="songGridContainer" class="grid-container"></div>
             </div>
 
         </div>
@@ -412,6 +432,7 @@
 
         let validImagesFound = []; 
         let validAudioFound = []; 
+        let validSongsFound = [];
         let currentPrankImage = null;
 
         let currentStickyImg = null;
@@ -444,6 +465,7 @@
                 if (message.data.action === 'SYNC_LIST') {
                     validImagesFound = message.data.images;
                     validAudioFound = message.data.audio;
+                    validSongsFound = message.data.songs || [];
                     buildPopupGrids();
                 }
             });
@@ -514,7 +536,8 @@
         function buildPopupGrids() {
             const imgGrid = document.getElementById('imageGridContainer');
             const audioGrid = document.getElementById('audioGridContainer');
-            if (!imgGrid || !audioGrid) return;
+            const songGrid = document.getElementById('songGridContainer');
+            if (!imgGrid || !audioGrid || !songGrid) return;
 
             const timestamp = "?t=" + new Date().getTime();
 
@@ -536,7 +559,7 @@
                 imgGrid.appendChild(item);
             });
 
-            // 2. POPULATE AUDIO
+            // 2. POPULATE AUDIO (SFX)
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
@@ -553,6 +576,25 @@
 
                 attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', audioFile, () => currentStickyAudio);
                 audioGrid.appendChild(item);
+            });
+
+            // 3. POPULATE SONGS
+            songGrid.innerHTML = '';
+            validSongsFound.forEach(songFile => {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                if (currentStickyAudio === songFile) item.className = 'grid-item sticky-active';
+
+                const iconBox = document.createElement('div');
+                iconBox.className = 'song-icon-box';
+                iconBox.innerText = '📻';
+                const label = document.createElement('span');
+                label.innerText = songFile;
+                item.appendChild(iconBox);
+                item.appendChild(label);
+
+                attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', songFile, () => currentStickyAudio);
+                songGrid.appendChild(item);
             });
         }
 
@@ -678,7 +720,6 @@
                     if (gainNode) gainNode.gain.value = 1.0; 
                     currentJumpscarePhase = 0;
                 } else if (currentJumpscarePhase === 8 || currentJumpscarePhase === 9) {
-                    // Revert back to default layout when custom sequence ends
                     imageElement.src = defaultImage + timestamp;
                     currentJumpscarePhase = 0;
                 }
@@ -707,10 +748,9 @@
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
 
-                // NEW ACTION HANDLER: KUNG FU FIGHTING ENGINE
                 else if (data.action === 'START_KUNGFU') {
                     stopAllAudioAndEffects();
-                    currentJumpscarePhase = 9; // State tracker for Kung Fu phase
+                    currentJumpscarePhase = 9; 
                     imageElement.src = "kungfufighting.png" + timestamp;
                     jumpscareTrack.src = "6.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
@@ -748,8 +788,10 @@
             preloaderContainer.innerHTML = '';
             let discoveredImages = [];
             let discoveredAudio = [];
+            let discoveredSongs = [];
             
-            let totalChecksExpected = MAX_SCAN_LIMIT * 2;
+            // 3 async checks per asset iteration block loop limit
+            let totalChecksExpected = MAX_SCAN_LIMIT * 3;
             let checksCompleted = 0;
 
             const checkFinished = () => {
@@ -758,13 +800,24 @@
                     if (discoveredImages.length === 0) discoveredImages = ["1.png"];
                     discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
                     discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
+                    discoveredSongs.sort((a, b) => {
+                        const numA = parseInt(a.replace("song", ""));
+                        const numB = parseInt(b.replace("song", ""));
+                        return numA - numB;
+                    });
 
                     validImagesFound = discoveredImages;
                     validAudioFound = discoveredAudio;
+                    validSongsFound = discoveredSongs;
 
                     drone.publish({
                         room: roomName,
-                        message: { action: 'SYNC_LIST', images: validImagesFound, audio: validAudioFound }
+                        message: { 
+                            action: 'SYNC_LIST', 
+                            images: validImagesFound, 
+                            audio: validAudioFound,
+                            songs: validSongsFound
+                        }
                     });
 
                     if (!currentPrankImage && imageElement) {
@@ -774,6 +827,7 @@
             };
 
             for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
+                // Check Images
                 const imgFilename = i + ".png";
                 const imgCheck = new Image();
                 imgCheck.onload = function() {
@@ -785,6 +839,7 @@
                 imgCheck.onerror = checkFinished;
                 imgCheck.src = imgFilename + timestamp;
 
+                // Check SFX Audio Tracks
                 const audioFilename = i + ".mp3";
                 const audioCheck = new Audio();
                 audioCheck.preload = "metadata"; 
@@ -794,6 +849,17 @@
                 };
                 audioCheck.onerror = checkFinished;
                 audioCheck.src = audioFilename + timestamp;
+
+                // Check Dedicated Song Tracks
+                const songFilename = "song" + i + ".mp3";
+                const songCheck = new Audio();
+                songCheck.preload = "metadata";
+                songCheck.onloadedmetadata = function() {
+                    discoveredSongs.push(songFilename);
+                    checkFinished();
+                };
+                songCheck.onerror = checkFinished;
+                songCheck.src = songFilename + timestamp;
             }
         }
 
