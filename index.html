@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
-    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -320,7 +319,6 @@
 </head>
 <body>
 
-    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -329,7 +327,6 @@
         </div>
     </div>
 
-    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
@@ -337,12 +334,10 @@
         <p class="status-text">Hold down PRANK for random, use JUMPSCARE for the sequence, or open vault</p>
     </div>
 
-    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
-            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -362,7 +357,6 @@
         </div>
     </div>
 
-    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <div id="strobeOverlay" class="strobe-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
@@ -385,9 +379,13 @@
         let currentStickyImg = null;
         let currentStickyAudio = null;
 
-        // The absolute minimum baseline tracks needed for the jumpscare feature
         let jumpscareTrack = new Audio();
         let currentJumpscarePhase = 0; 
+
+        // Web Audio components for digital level amplification
+        let audioCtx = null;
+        let gainNode = null;
+        let sourceNode = null;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -454,51 +452,6 @@
                 room: roomName,
                 message: { action: resetType }
             });
-        }
-
-        function setStickyLock(type, filename) {
-            if (type === 'TRIGGER') {
-                currentStickyImg = filename;
-            } else {
-                currentStickyAudio = filename;
-            }
-            updateStatusBarUI();
-            buildPopupGrids();
-            triggerTargetAction(type, filename);
-        }
-
-        function clearSingleLock(type) {
-            if (type === 'TRIGGER') {
-                currentStickyImg = null;
-                resetTargetAction('RESET_IMAGE');
-            } else {
-                currentStickyAudio = null;
-                resetTargetAction('RESET_AUDIO');
-            }
-            updateStatusBarUI();
-            buildPopupGrids();
-        }
-
-        function clearAllLocks() {
-            currentStickyImg = null;
-            currentStickyAudio = null;
-            updateStatusBarUI();
-            buildPopupGrids();
-            resetTargetAction('RESET_ALL');
-        }
-
-        function updateStatusBarUI() {
-            const bar = document.getElementById('statusBar');
-            if (currentStickyImg || currentStickyAudio) {
-                bar.className = 'sticky-status-bar locked';
-                let txt = "🛑 STOP: ";
-                if (currentStickyImg) txt += `[${currentStickyImg}] `;
-                if (currentStickyAudio) txt += `[${currentStickyAudio}]`;
-                bar.innerText = txt;
-            } else {
-                bar.className = 'sticky-status-bar';
-                bar.innerText = 'Double-tap cards to Lock | Click here to Stop All';
-            }
         }
 
         // --- POPUP INTERACTION GENERATOR ---
@@ -604,6 +557,43 @@
             element.addEventListener('touchcancel', pressEnd, { passive: false });
         }
 
+        function setStickyLock(type, filename) {
+            if (type === 'TRIGGER') currentStickyImg = filename;
+            else currentStickyAudio = filename;
+            updateStatusBarUI();
+            buildPopupGrids();
+            triggerTargetAction(type, filename);
+        }
+
+        function clearSingleLock(type) {
+            if (type === 'TRIGGER') { currentStickyImg = null; resetTargetAction('RESET_IMAGE'); }
+            else { currentStickyAudio = null; resetTargetAction('RESET_AUDIO'); }
+            updateStatusBarUI();
+            buildPopupGrids();
+        }
+
+        function clearAllLocks() {
+            currentStickyImg = null;
+            currentStickyAudio = null;
+            updateStatusBarUI();
+            buildPopupGrids();
+            resetTargetAction('RESET_ALL');
+        }
+
+        function updateStatusBarUI() {
+            const bar = document.getElementById('statusBar');
+            if (currentStickyImg || currentStickyAudio) {
+                bar.className = 'sticky-status-bar locked';
+                let txt = "🛑 STOP: ";
+                if (currentStickyImg) txt += `[${currentStickyImg}] `;
+                if (currentStickyAudio) txt += `[${currentStickyAudio}]`;
+                bar.innerText = txt;
+            } else {
+                bar.className = 'sticky-status-bar';
+                bar.innerText = 'Double-tap cards to Lock | Click here to Stop All';
+            }
+        }
+
         // --- DISPLAY CLIENT SYSTEM ---
         function setupSlave() {
             const slavePanel = document.getElementById('slaveView');
@@ -620,22 +610,28 @@
             const stopAllAudioAndEffects = () => {
                 jumpscareTrack.pause();
                 currentJumpscarePhase = 0;
+                if (gainNode) gainNode.gain.value = 1.0; // Reset gain node values
                 if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
                 if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
                 document.getElementById('strobeOverlay').classList.remove('active');
             };
 
-            // STRICT JUMPSCARE SEQUENCE ENGINE
+            // JUMPSCARE SEQUENCE ENGINE
             jumpscareTrack.onended = function() {
                 if (currentJumpscarePhase === 5) {
                     jumpscareTimeout = setTimeout(() => {
                         currentJumpscarePhase = 4;
                         document.getElementById('strobeOverlay').classList.add('active');
+                        
+                        // Set digital gain amplifier up to 5.0x volume output for 4.mp3 phase
+                        if (gainNode) gainNode.gain.value = 5.0; 
+                        
                         jumpscareTrack.src = "4.mp3?t=" + new Date().getTime();
                         jumpscareTrack.play().catch(e => console.log(e));
                     }, 1000);
                 } else if (currentJumpscarePhase === 4) {
                     document.getElementById('strobeOverlay').classList.remove('active');
+                    if (gainNode) gainNode.gain.value = 1.0; // Return gain safely
                     currentJumpscarePhase = 0;
                 }
             };
@@ -648,12 +644,11 @@
                     scanAndRefreshAssets();
                 }
                 
-                // ONLY TRACKING CHANGED LOGIC HERE: Stripped down to direct context injection
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 5;
                     jumpscareTrack.src = "5.mp3" + timestamp;
-                    jumpscareTrack.play().catch(err => console.log("Playback engine trace: ", err));
+                    jumpscareTrack.play().catch(err => console.log(err));
                 }
                 
                 else if (data.action === 'TRIGGER') {
@@ -740,7 +735,21 @@
         function toggleFullscreen(event) {
             if (event) event.stopPropagation(); 
             
-            // Prime the pipeline context directly inside the user interface loop
+            // Build and link standard hardware graph pipeline upon physical user interaction click
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioCtx.createGain();
+                sourceNode = audioCtx.createMediaElementSource(jumpscareTrack);
+                
+                // Link element -> Volume Amplifier -> Hardware Speakers
+                sourceNode.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+            }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
             jumpscareTrack.play().then(() => { jumpscareTrack.pause(); }).catch(e => console.log(e));
 
             if (!document.fullscreenElement) {
