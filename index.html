@@ -278,20 +278,24 @@
             -webkit-user-drag: none;
         }
 
-        /* High-speed keyframe strobe tracking */
+        /* Dedicated front-layer strobe shield */
+        .strobe-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 50; /* Forces overlay above the image layer */
+            pointer-events: none;
+        }
+
         @keyframes flashEffect {
             0% { background-color: #ff0000; }
             50% { background-color: #ffffff; }
             100% { background-color: #ff0000; }
         }
 
-        /* Accelerated animation timer */
-        .slave-view.flashing {
+        .strobe-overlay.active {
+            display: block;
             animation: flashEffect 0.03s infinite;
-        }
-
-        .slave-view.flashing .fullscreen-image {
-            opacity: 0.2; /* Dropped slightly further to make the high-speed background colors more intense */
         }
 
         .fullscreen-toggle-btn {
@@ -354,6 +358,7 @@
     </div>
 
     <div id="slaveView" class="slave-view">
+        <div id="strobeOverlay" class="strobe-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
         <button class="fullscreen-toggle-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
@@ -592,6 +597,7 @@
         // --- DISPLAY CLIENT SYSTEM ---
         function setupSlave() {
             const slavePanel = document.getElementById('slaveView');
+            const strobeLayer = document.getElementById('strobeOverlay');
             slavePanel.style.display = 'block';
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
@@ -620,7 +626,7 @@
                 // Jumpscare Sequence Execution Engine
                 else if (data.action === 'START_JUMPSCARE') {
                     stopActiveAudio();
-                    slavePanel.classList.remove('flashing');
+                    strobeLayer.classList.remove('active');
 
                     // Step 1: Play 5.mp3 immediately
                     activeAudioTrack = new Audio("5.mp3" + timestamp);
@@ -630,14 +636,14 @@
                     activeAudioTrack.onended = function() {
                         // Wait exactly 1 second
                         setTimeout(() => {
-                            // Step 3: Start 4.mp3 and initiate red/white strobe
-                            slavePanel.classList.add('flashing');
+                            // Step 3: Start 4.mp3 and inject strobe class simultaneously
+                            strobeLayer.classList.add('active');
                             activeAudioTrack = new Audio("4.mp3" + timestamp);
                             activeAudioTrack.play().catch(err => console.log(err));
 
-                            // Step 4: Clean up when sequence finishes completely
+                            // Step 4: Instantly hide strobe overlay the frame 4.mp3 stops
                             activeAudioTrack.onended = function() {
-                                slavePanel.classList.remove('flashing');
+                                strobeLayer.classList.remove('active');
                             };
                         }, 1000);
                     };
@@ -661,7 +667,7 @@
                 }
                 else if (data.action === 'RESET_ALL') {
                     stopActiveAudio();
-                    slavePanel.classList.remove('flashing');
+                    strobeLayer.classList.remove('active');
                     currentPrankImage = null;
                     imageElement.src = defaultImage + timestamp;
                 }
