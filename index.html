@@ -85,12 +85,15 @@
 
         .action-button-row {
             display: flex;
-            gap: 15px;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90%;
         }
 
         .jumpscare-btn {
-            padding: 15px 30px;
-            font-size: 1.1rem;
+            padding: 12px 24px;
+            font-size: 1rem;
             font-weight: bold;
             background-color: #ff0000;
             color: white;
@@ -102,8 +105,8 @@
         }
 
         .banana-btn {
-            padding: 15px 30px;
-            font-size: 1.1rem;
+            padding: 12px 24px;
+            font-size: 1rem;
             font-weight: bold;
             background-color: #e6b800;
             color: #121212;
@@ -114,7 +117,20 @@
             transition: transform 0.1s ease;
         }
 
-        .jumpscare-btn:active, .banana-btn:active {
+        .kungfu-btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            background-color: #ffffff;
+            color: #121212;
+            border: 3px solid #ff4500;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.4);
+            transition: transform 0.1s ease;
+        }
+
+        .jumpscare-btn:active, .banana-btn:active, .kungfu-btn:active {
             transform: scale(0.95);
         }
 
@@ -350,6 +366,7 @@
         <div class="action-button-row">
             <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
             <button class="banana-btn" onclick="triggerBanana()">🍌 OOOH BANANA</button>
+            <button class="kungfu-btn" onclick="triggerKungFu()">🥋 KUNG FU</button>
         </div>
         <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
         <p class="status-text">Hold down PRANK for random, use buttons for events, or open vault</p>
@@ -463,6 +480,10 @@
 
         function triggerBanana() {
             triggerTargetAction('START_BANANA', true);
+        }
+
+        function triggerKungFu() {
+            triggerTargetAction('START_KUNGFU', true);
         }
 
         function triggerTargetAction(actionType, assetName) {
@@ -641,7 +662,7 @@
                 document.getElementById('strobeOverlay').classList.remove('active');
             };
 
-            // JUMPSCARE SEQUENCE ENGINE
+            // JUMPSCARE & CUSTOM SEQUENCE ENGINE
             jumpscareTrack.onended = function() {
                 const timestamp = "?t=" + new Date().getTime();
                 if (currentJumpscarePhase === 5) {
@@ -656,8 +677,8 @@
                     document.getElementById('strobeOverlay').classList.remove('active');
                     if (gainNode) gainNode.gain.value = 1.0; 
                     currentJumpscarePhase = 0;
-                } else if (currentJumpscarePhase === 8) {
-                    // Banana Audio Finished -> Revert Image back to default immediately
+                } else if (currentJumpscarePhase === 8 || currentJumpscarePhase === 9) {
+                    // Revert back to default layout when custom sequence ends
                     imageElement.src = defaultImage + timestamp;
                     currentJumpscarePhase = 0;
                 }
@@ -678,12 +699,20 @@
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
 
-                // NEW ACTION HANDLER: OOOH BANANA ENGINE
                 else if (data.action === 'START_BANANA') {
                     stopAllAudioAndEffects();
-                    currentJumpscarePhase = 8; // Dedicated state id for banana tracker
+                    currentJumpscarePhase = 8; 
                     imageElement.src = "oh banana.png" + timestamp;
                     jumpscareTrack.src = "1.mp3" + timestamp;
+                    jumpscareTrack.play().catch(err => console.log(err));
+                }
+
+                // NEW ACTION HANDLER: KUNG FU FIGHTING ENGINE
+                else if (data.action === 'START_KUNGFU') {
+                    stopAllAudioAndEffects();
+                    currentJumpscarePhase = 9; // State tracker for Kung Fu phase
+                    imageElement.src = "kungfufighting.png" + timestamp;
+                    jumpscareTrack.src = "6.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
                 
