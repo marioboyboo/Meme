@@ -432,6 +432,7 @@
 
         function closePopup() { document.getElementById('popupOverlay').style.display = 'none'; }
 
+        // 1. Structural Component Generator
         function buildPopupGrids() {
             const imgGrid = document.getElementById('imageGridContainer');
             const audioGrid = document.getElementById('audioGridContainer');
@@ -440,7 +441,7 @@
 
             const timestamp = "?t=" + new Date().getTime();
 
-            // 1. Meme Images Layout
+            // Meme Card Assembly
             imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
@@ -455,7 +456,7 @@
                 imgGrid.appendChild(item);
             });
 
-            // 2. Sound Effects Layout
+            // SFX Audio Card Assembly
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
@@ -471,7 +472,7 @@
                 audioGrid.appendChild(item);
             });
 
-            // 3. Music Songs Layout
+            // Music Card Assembly (Matching Layout Structures)
             songGrid.innerHTML = '';
             validSongsFound.forEach(songFile => {
                 const item = document.createElement('div');
@@ -673,10 +674,8 @@
             let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
             let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
             
-            let discoveredSongs = []; 
-            for (let i = 1; i <= 100; i++) {
-                discoveredSongs.push(`song${i}.mp3`);
-            }
+            // Dynamic asset mapping array representing uploaded media storage 
+            let discoveredSongs = ["song1.mp3", "song2.mp3", "song3.mp3", "song4.mp3", "song5.mp3", "song6.mp3"]; 
 
             discoveredImages.forEach(imgFile => {
                 const preload = new Image();
