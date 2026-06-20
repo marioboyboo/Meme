@@ -364,7 +364,7 @@
         #preloaderContainer {
             display: none;
         }
-    </style>
+    </script>
 </head>
 <body>
 
@@ -423,8 +423,11 @@
     </div>
 
     <script>
-        const MAX_SCAN_LIMIT = 100; 
         const defaultImage = "meme.jpg";
+
+        // Auto-detect URL format safely whether opened inside local files or GitHub Pages
+        const IS_LOCAL = window.location.protocol === 'file:';
+        const BASE_URL = IS_LOCAL ? "" : window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
@@ -441,7 +444,6 @@
         let jumpscareTrack = new Audio();
         let currentJumpscarePhase = 0; 
 
-        // Web Audio components for digital level amplification
         let audioCtx = null;
         let gainNode = null;
         let sourceNode = null;
@@ -549,7 +551,7 @@
                 if (currentStickyImg === imgFile) item.className = 'grid-item sticky-active';
 
                 const img = document.createElement('img');
-                img.src = imgFile + timestamp;
+                img.src = BASE_URL + imgFile + timestamp;
                 const label = document.createElement('span');
                 label.innerText = imgFile;
                 item.appendChild(img);
@@ -672,10 +674,7 @@
             const bar = document.getElementById('statusBar');
             if (currentStickyImg || currentStickyAudio) {
                 bar.className = 'sticky-status-bar locked';
-                let txt = "🛑 STOP: ";
-                if (currentStickyImg) txt += `[${currentStickyImg}] `;
-                if (currentStickyAudio) txt += `[${currentStickyAudio}]`;
-                bar.innerText = txt;
+                bar.innerText = `🛑 STOP: [${currentStickyImg || ''}] [${currentStickyAudio || ''}]`;
             } else {
                 bar.className = 'sticky-status-bar';
                 bar.innerText = 'Double-tap cards to Lock | Click here to Stop All';
@@ -687,7 +686,7 @@
             const slavePanel = document.getElementById('slaveView');
             slavePanel.style.display = 'block';
             const imageElement = document.getElementById('memeImg');
-            imageElement.src = defaultImage;
+            imageElement.src = BASE_URL + defaultImage;
 
             let flexibleAudioTrack = null;
             let jumpscareTimeout = null;
@@ -711,7 +710,7 @@
                         currentJumpscarePhase = 4;
                         document.getElementById('strobeOverlay').classList.add('active');
                         if (gainNode) gainNode.gain.value = 5.0; 
-                        jumpscareTrack.src = "4.mp3?t=" + new Date().getTime();
+                        jumpscareTrack.src = BASE_URL + "4.mp3?t=" + new Date().getTime();
                         jumpscareTrack.play().catch(e => console.log(e));
                     }, 1000);
                 } else if (currentJumpscarePhase === 4) {
@@ -719,7 +718,7 @@
                     if (gainNode) gainNode.gain.value = 1.0; 
                     currentJumpscarePhase = 0;
                 } else if (currentJumpscarePhase === 8 || currentJumpscarePhase === 9) {
-                    imageElement.src = defaultImage + timestamp;
+                    imageElement.src = BASE_URL + defaultImage + timestamp;
                     currentJumpscarePhase = 0;
                 }
             };
@@ -735,37 +734,37 @@
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 5;
-                    jumpscareTrack.src = "5.mp3" + timestamp;
+                    jumpscareTrack.src = BASE_URL + "5.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
 
                 else if (data.action === 'START_BANANA') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 8; 
-                    imageElement.src = "oh banana.png" + timestamp;
-                    jumpscareTrack.src = "1.mp3" + timestamp;
+                    imageElement.src = BASE_URL + "oh banana.png" + timestamp;
+                    jumpscareTrack.src = BASE_URL + "1.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
 
                 else if (data.action === 'START_KUNGFU') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 9; 
-                    imageElement.src = "kungfufighting.png" + timestamp;
-                    jumpscareTrack.src = "6.mp3" + timestamp;
+                    imageElement.src = BASE_URL + "kungfufighting.png" + timestamp;
+                    jumpscareTrack.src = BASE_URL + "6.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
                 
                 else if (data.action === 'TRIGGER') {
                     currentPrankImage = data.file;
-                    imageElement.src = currentPrankImage;
+                    imageElement.src = BASE_URL + currentPrankImage;
                 } 
                 else if (data.action === 'RESET_IMAGE') {
                     currentPrankImage = null;
-                    imageElement.src = defaultImage + timestamp;
+                    imageElement.src = BASE_URL + defaultImage + timestamp;
                 }
                 else if (data.action === 'TRIGGER_AUDIO') {
                     stopAllAudioAndEffects();
-                    flexibleAudioTrack = new Audio(data.file + timestamp);
+                    flexibleAudioTrack = new Audio(BASE_URL + data.file + timestamp);
                     flexibleAudioTrack.play().catch(err => console.log(err));
                 } 
                 else if (data.action === 'RESET_AUDIO') {
@@ -774,77 +773,36 @@
                 else if (data.action === 'RESET_ALL') {
                     stopAllAudioAndEffects();
                     currentPrankImage = null;
-                    imageElement.src = defaultImage + timestamp;
+                    imageElement.src = BASE_URL + defaultImage + timestamp;
                 }
             });
         }
 
-        // Optimized asset scanner using background HTTP requests
-        async function scanAndRefreshAssets() {
+        // Instant Asset Mapping Engine Map (Bypasses blind network probing loops entirely)
+        function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
             const timestamp = "?t=" + new Date().getTime();
             
             if (preloaderContainer) preloaderContainer.innerHTML = '';
             
-            let discoveredImages = [];
-            let discoveredAudio = [];
-            let discoveredSongs = [];
+            // EXACT TRACKER ARRAYS (Add new filenames here when you expand your repo!)
+            let discoveredImages = ["1.png", "2.png", "3.png", "4.png"];
+            let discoveredAudio = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3", "10.mp3"];
+            let discoveredSongs = []; 
 
-            // Run scanner tasks in parallel chunks to avoid server throttling
-            const scanPromises = [];
-
-            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
-                // 1. Image Check
-                scanPromises.push(
-                    fetch(`${i}.png${timestamp}`, { method: 'HEAD' })
-                        .then(res => {
-                            if (res.ok) {
-                                discoveredImages.push(`${i}.png`);
-                                const preload = new Image();
-                                preload.src = `${i}.png${timestamp}`;
-                                if (preloaderContainer) preloaderContainer.appendChild(preload);
-                            }
-                        }).catch(() => {})
-                );
-
-                // 2. SFX Audio Check
-                scanPromises.push(
-                    fetch(`${i}.mp3${timestamp}`, { method: 'HEAD' })
-                        .then(res => {
-                            if (res.ok) discoveredAudio.push(`${i}.mp3`);
-                        }).catch(() => {})
-                );
-
-                // 3. Song Check
-                scanPromises.push(
-                    fetch(`song${i}.mp3${timestamp}`, { method: 'HEAD' })
-                        .then(res => {
-                            if (res.ok) discoveredSongs.push(`song${i}.mp3`);
-                        }).catch(() => {})
-                );
-            }
-
-            // Wait for all HTTP checks to finish checking files
-            await Promise.all(scanPromises);
-
-            // Defaults fallback if no image targets exist
-            if (discoveredImages.length === 0) discoveredImages = ["1.png"];
-
-            // Sort everything numerically
-            discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
-            discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
-            discoveredSongs.sort((a, b) => {
-                const numA = parseInt(a.replace("song", "").replace(".mp3", ""));
-                const numB = parseInt(b.replace("song", "").replace(".mp3", ""));
-                return numA - numB;
+            // Preload structural images instantly
+            discoveredImages.forEach(imgFile => {
+                const preload = new Image();
+                preload.src = BASE_URL + imgFile + timestamp;
+                if (preloaderContainer) preloaderContainer.appendChild(preload);
             });
 
             validImagesFound = discoveredImages;
             validAudioFound = discoveredAudio;
             validSongsFound = discoveredSongs;
 
-            // Broadcast verified payload over network
+            // Broadcast arrays straight to controller dashboard panels
             drone.publish({
                 room: roomName,
                 message: { 
@@ -856,7 +814,7 @@
             });
 
             if (!currentPrankImage && imageElement) {
-                imageElement.src = defaultImage + timestamp;
+                imageElement.src = BASE_URL + defaultImage + timestamp;
             }
         }
 
