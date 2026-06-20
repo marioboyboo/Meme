@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
+    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -282,6 +283,7 @@
 </head>
 <body>
 
+    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -290,18 +292,21 @@
         </div>
     </div>
 
+    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
-        <p class="status-text">Hold down PRANK for a random layout, or open the vault below to target items</p>
+        <p class="status-text">Hold down PRANK for random, or open the vault to pick items</p>
     </div>
 
+    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
-            <div id="statusBar" class="sticky-status-bar" onclick="clearStickyLock()">
-                Hold to play / Double-tap to Lock
+            <!-- Universal Status Reset Bar -->
+            <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
+                Double-tap cards to Lock | Click here to Stop All
             </div>
         </div>
         <div class="vault-split-container">
@@ -319,6 +324,7 @@
         </div>
     </div>
 
+    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
@@ -337,9 +343,9 @@
         let validAudioFound = []; 
         let currentPrankImage = null;
 
-        // Sticky Vector Engine States
-        let isStickyLocked = false;
-        let currentStickyFile = null;
+        // Independent State Trackers for Dual-Channel Execution
+        let currentStickyImg = null;
+        let currentStickyAudio = null;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -364,18 +370,18 @@
                 }
             });
 
+            // Random big button handles both states symmetrically
             const startPrank = (e) => {
                 if (e) e.preventDefault();
-                if (isStickyLocked) return;
+                if (currentStickyImg) return;
                 const randomIndex = Math.floor(Math.random() * validImagesFound.length);
-                const randomPng = validImagesFound[randomIndex];
-                triggerTargetAction('TRIGGER', randomPng);
+                triggerTargetAction('TRIGGER', validImagesFound[randomIndex]);
             };
 
             const stopPrank = (e) => {
                 if (e) e.preventDefault();
-                if (isStickyLocked) return;
-                resetTargetAction('RESET');
+                if (currentStickyImg) return;
+                resetTargetAction('RESET_IMAGE');
             };
 
             prankBtn.addEventListener('mousedown', startPrank);
@@ -403,33 +409,48 @@
         }
 
         function setStickyLock(type, filename) {
-            isStickyLocked = true;
-            currentStickyFile = filename;
-
-            // Highlight status indicator
-            const bar = document.getElementById('statusBar');
-            bar.className = 'sticky-status-bar locked';
-            bar.innerText = `🛑 LOCKED: ${filename} (Click here to stop)`;
-
-            // Visual check marking cards
-            document.querySelectorAll('.grid-item').forEach(el => {
-                el.classList.remove('sticky-active');
-                if (el.dataset.filename === filename) el.classList.add('sticky-active');
-            });
-
+            if (type === 'TRIGGER') {
+                currentStickyImg = filename;
+            } else {
+                currentStickyAudio = filename;
+            }
+            updateStatusBarUI();
+            buildPopupGrids();
             triggerTargetAction(type, filename);
         }
 
-        function clearStickyLock() {
-            isStickyLocked = false;
-            currentStickyFile = null;
+        function clearSingleLock(type) {
+            if (type === 'TRIGGER') {
+                currentStickyImg = null;
+                resetTargetAction('RESET_IMAGE');
+            } else {
+                currentStickyAudio = null;
+                resetTargetAction('RESET_AUDIO');
+            }
+            updateStatusBarUI();
+            buildPopupGrids();
+        }
 
+        function clearAllLocks() {
+            currentStickyImg = null;
+            currentStickyAudio = null;
+            updateStatusBarUI();
+            buildPopupGrids();
+            resetTargetAction('RESET_ALL');
+        }
+
+        function updateStatusBarUI() {
             const bar = document.getElementById('statusBar');
-            bar.className = 'sticky-status-bar';
-            bar.innerText = 'Hold to play / Double-tap to Lock';
-
-            document.querySelectorAll('.grid-item').forEach(el => el.classList.remove('sticky-active'));
-            resetTargetAction('RESET');
+            if (currentStickyImg || currentStickyAudio) {
+                bar.className = 'sticky-status-bar locked';
+                let txt = "🛑 STOP: ";
+                if (currentStickyImg) txt += `[${currentStickyImg}] `;
+                if (currentStickyAudio) txt += `[${currentStickyAudio}]`;
+                bar.innerText = txt;
+            } else {
+                bar.className = 'sticky-status-bar';
+                bar.innerText = 'Double-tap cards to Lock | Click here to Stop All';
+            }
         }
 
         // --- POPUP INTERACTION GENERATOR ---
@@ -440,7 +461,7 @@
 
         function closePopup() {
             document.getElementById('popupOverlay').style.display = 'none';
-            clearStickyLock();
+            clearAllLocks();
         }
 
         function buildPopupGrids() {
@@ -455,8 +476,7 @@
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
-                item.dataset.filename = imgFile;
-                if (currentStickyFile === imgFile) item.classList.add('sticky-active');
+                if (currentStickyImg === imgFile) item.className = 'grid-item sticky-active';
 
                 const img = document.createElement('img');
                 img.src = imgFile + timestamp;
@@ -465,7 +485,7 @@
                 item.appendChild(img);
                 item.appendChild(label);
 
-                attachHoldAndDoubleTapListeners(item, 'TRIGGER', imgFile);
+                attachHoldAndDoubleTapListeners(item, 'TRIGGER', imgFile, () => currentStickyImg);
                 imgGrid.appendChild(item);
             });
 
@@ -474,8 +494,7 @@
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
-                item.dataset.filename = audioFile;
-                if (currentStickyFile === audioFile) item.classList.add('sticky-active');
+                if (currentStickyAudio === audioFile) item.className = 'grid-item sticky-active';
 
                 const iconBox = document.createElement('div');
                 iconBox.className = 'audio-icon-box';
@@ -485,20 +504,21 @@
                 item.appendChild(iconBox);
                 item.appendChild(label);
 
-                attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', audioFile);
+                attachHoldAndDoubleTapListeners(item, 'TRIGGER_AUDIO', audioFile, () => currentStickyAudio);
                 audioGrid.appendChild(item);
             });
         }
 
-        // Clean tap/click engine targeting mobile behaviors accurately
-        function attachHoldAndDoubleTapListeners(element, type, file) {
+        function attachHoldAndDoubleTapListeners(element, type, file, getStickyState) {
             let lastTap = 0;
             let touchActive = false;
 
-            // --- Press & Hold Down Mechanics ---
+            const isImage = (type === 'TRIGGER');
+            const resetCommand = isImage ? 'RESET_IMAGE' : 'RESET_AUDIO';
+
             const pressStart = (e) => {
                 if (e) e.preventDefault();
-                if (isStickyLocked) return;
+                if (getStickyState()) return; // Block hold adjustments if locked
                 touchActive = true;
                 element.classList.add('active');
                 triggerTargetAction(type, file);
@@ -509,19 +529,17 @@
                 if (!touchActive) return;
                 touchActive = false;
                 element.classList.remove('active');
-                if (!isStickyLocked) resetTargetAction('RESET');
+                if (!getStickyState()) resetTargetAction(resetCommand);
             };
 
-            // --- Double Tap / Click Mechanics ---
             const handleTapLock = (e) => {
                 if (e) e.preventDefault();
                 const now = new Date().getTime();
                 const timesince = now - lastTap;
                 
                 if (timesince < 300 && timesince > 0) {
-                    // Double Tap Recognized!
-                    if (isStickyLocked && currentStickyFile === file) {
-                        clearStickyLock();
+                    if (getStickyState() === file) {
+                        clearSingleLock(type);
                     } else {
                         setStickyLock(type, file);
                     }
@@ -529,19 +547,11 @@
                 lastTap = now;
             };
 
-            // Mouse Attachments
-            element.addEventListener('mousedown', (e) => {
-                handleTapLock(e);
-                pressStart(e);
-            });
+            element.addEventListener('mousedown', (e) => { handleTapLock(e); pressStart(e); });
             element.addEventListener('mouseup', pressEnd);
             element.addEventListener('mouseleave', pressEnd);
 
-            // Touch Attachments
-            element.addEventListener('touchstart', (e) => {
-                handleTapLock(e);
-                pressStart(e);
-            }, { passive: false });
+            element.addEventListener('touchstart', (e) => { handleTapLock(e); pressStart(e); }, { passive: false });
             element.addEventListener('touchend', pressEnd, { passive: false });
             element.addEventListener('touchcancel', pressEnd, { passive: false });
         }
@@ -560,19 +570,33 @@
             room.on('message', message => {
                 const data = message.data;
                 
+                // Image Processing Path
                 if (data.action === 'TRIGGER') {
                     currentPrankImage = data.file;
                     imageElement.src = currentPrankImage;
                 } 
+                else if (data.action === 'RESET_IMAGE') {
+                    currentPrankImage = null;
+                    imageElement.src = defaultImage + "?t=" + new Date().getTime();
+                }
+                
+                // Audio Processing Path
                 else if (data.action === 'TRIGGER_AUDIO') {
                     if (activeAudioTrack) {
                         activeAudioTrack.pause();
-                        activeAudioTrack = null;
                     }
                     activeAudioTrack = new Audio(data.file + "?t=" + new Date().getTime());
                     activeAudioTrack.play().catch(err => console.log(err));
                 } 
-                else if (data.action === 'RESET') {
+                else if (data.action === 'RESET_AUDIO') {
+                    if (activeAudioTrack) {
+                        activeAudioTrack.pause();
+                        activeAudioTrack = null;
+                    }
+                }
+                
+                // Wipe channels simultaneously
+                else if (data.action === 'RESET_ALL') {
                     if (activeAudioTrack) {
                         activeAudioTrack.pause();
                         activeAudioTrack = null;
