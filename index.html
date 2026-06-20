@@ -107,12 +107,12 @@
             max-width: 80%;
         }
 
-        /* Popup Selection Overlay */
+        /* Popup Selection Overlay Split Screen */
         .popup-overlay {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             z-index: 20;
             flex-direction: column;
             padding: 20px;
@@ -122,9 +122,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 1px solid #333;
+            flex-shrink: 0;
         }
 
         .close-popup-btn {
@@ -137,15 +137,40 @@
             cursor: pointer;
         }
 
+        /* Split Window Layout Panels */
+        .vault-split-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 60px);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .vault-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Important for scroll calculations */
+        }
+
+        .vault-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #00ffcc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         .grid-container {
             flex: 1;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 15px;
-            padding-bottom: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+            gap: 12px;
+            padding-right: 5px;
         }
 
+        /* Visual Action Cards */
         .grid-item {
             background: #252525;
             border: 2px solid #3c3c3c;
@@ -160,19 +185,33 @@
 
         .grid-item:active, .grid-item.active {
             border-color: #00ffcc;
+            background: #2a2a2a;
         }
 
         .grid-item img {
             width: 100%;
-            height: 90px;
+            height: 75px;
             object-fit: cover;
             pointer-events: none;
         }
 
+        /* Sound Icon Placeholder Box */
+        .audio-icon-box {
+            width: 100%;
+            height: 75px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #1b1b1b;
+            font-size: 2rem;
+            color: #ff4500;
+        }
+
         .grid-item span {
             font-size: 0.75rem;
-            padding: 4px;
+            padding: 6px;
             color: #aaa;
+            font-weight: bold;
         }
 
         /* Display View */
@@ -223,17 +262,28 @@
 
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
-        <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME</button>
-        <p class="status-text">Hold down PRANK for random, or open the vault to pick a specific layout</p>
+        <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
+        <p class="status-text">Hold down PRANK for a random layout, or open the vault below to target items</p>
     </div>
 
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
-            <h2>Select Specific Meme</h2>
+            <h2>Meme Vault Controller</h2>
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
         </div>
-        <div id="gridContainer" class="grid-container">
+        <div class="vault-split-container">
+            
+            <div class="vault-section">
+                <h3>🖼️ Specific Meme Images</h3>
+                <div id="imageGridContainer" class="grid-container"></div>
             </div>
+
+            <div class="vault-section">
+                <h3>🔊 Specific MP3 Audio Tracks</h3>
+                <div id="audioGridContainer" class="grid-container"></div>
+            </div>
+
+        </div>
     </div>
 
     <div id="slaveView" class="slave-view">
@@ -250,7 +300,9 @@
         const roomName = 'observable-meme-room';
         let room;
 
+        // Dynamic local repository vectors updated live by clients
         let validImagesFound = ["1.png"]; 
+        let validAudioFound = []; 
         let currentPrankImage = null;
 
         function initRole(role) {
@@ -273,11 +325,11 @@
             document.getElementById('masterPanel').style.display = 'flex';
             const prankBtn = document.getElementById('prankBtn');
 
-            // Keep track of the active pool calculated dynamically by active display clients
             room.on('message', message => {
                 if (message.data.action === 'SYNC_LIST') {
-                    validImagesFound = message.data.list;
-                    buildPopupGrid(); // Instantly update popup contents if list modifications happen live
+                    validImagesFound = message.data.images;
+                    validAudioFound = message.data.audio;
+                    buildPopupGrids();
                 }
             });
 
@@ -285,15 +337,14 @@
                 if (e) e.preventDefault();
                 const randomIndex = Math.floor(Math.random() * validImagesFound.length);
                 const randomPng = validImagesFound[randomIndex];
-                triggerTargetImage(randomPng);
+                triggerTargetAction('TRIGGER', randomPng);
             };
 
             const stopPrank = (e) => {
                 if (e) e.preventDefault();
-                resetTargetImage();
+                resetTargetAction('RESET');
             };
 
-            // Main random logic event bindings
             prankBtn.addEventListener('mousedown', startPrank);
             window.addEventListener('mouseup', stopPrank);
             
@@ -301,42 +352,43 @@
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
 
-            // Initial view mapping step
-            buildPopupGrid();
+            buildPopupGrids();
         }
 
-        function triggerTargetImage(imgName) {
+        function triggerTargetAction(actionType, assetName) {
             drone.publish({
                 room: roomName,
-                message: { action: 'TRIGGER', img: imgName }
+                message: { action: actionType, file: assetName }
             });
         }
 
-        function resetTargetImage() {
+        function resetTargetAction(resetType) {
             drone.publish({
                 room: roomName,
-                message: { action: 'RESET' }
+                message: { action: resetType }
             });
         }
 
-        // --- POPUP SYSTEM INTERACTION LOGIC ---
+        // --- SPLIT GRIDS POPUP INTERACTION GENERATOR ---
         function openPopup() {
-            buildPopupGrid();
+            buildPopupGrids();
             document.getElementById('popupOverlay').style.display = 'flex';
         }
 
         function closePopup() {
             document.getElementById('popupOverlay').style.display = 'none';
-            resetTargetImage();
+            resetTargetAction('RESET');
         }
 
-        function buildPopupGrid() {
-            const gridContainer = document.getElementById('gridContainer');
-            if (!gridContainer) return;
+        function buildPopupGrids() {
+            const imgGrid = document.getElementById('imageGridContainer');
+            const audioGrid = document.getElementById('audioGridContainer');
+            if (!imgGrid || !audioGrid) return;
 
-            gridContainer.innerHTML = '';
             const timestamp = "?t=" + new Date().getTime();
 
+            // 1. POPULATE IMAGE CARDS (TOP HALF)
+            imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
@@ -350,29 +402,49 @@
                 item.appendChild(img);
                 item.appendChild(label);
 
-                // Desktop trigger
-                item.addEventListener('mousedown', () => { triggerTargetImage(imgFile); item.classList.add('active'); });
-                
-                // Mobile trigger
-                item.addEventListener('touchstart', (e) => { 
-                    e.preventDefault(); 
-                    triggerTargetImage(imgFile); 
-                    item.classList.add('active'); 
-                }, { passive: false });
+                // Hold down to fire target image live across network
+                const pressStart = () => { triggerTargetAction('TRIGGER', imgFile); item.classList.add('active'); };
+                item.addEventListener('mousedown', pressStart);
+                item.addEventListener('touchstart', (e) => { e.preventDefault(); pressStart(); }, { passive: false });
 
-                gridContainer.appendChild(item);
+                imgGrid.appendChild(item);
             });
 
-            // Ensure releases clear everything regardless of where interaction terminates
-            window.addEventListener('mouseup', clearGridHighlights);
-            window.addEventListener('touchend', clearGridHighlights);
+            // 2. POPULATE AUDIO CARDS (BOTTOM HALF)
+            audioGrid.innerHTML = '';
+            validAudioFound.forEach(audioFile => {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+
+                const iconBox = document.createElement('div');
+                iconBox.className = 'audio-icon-box';
+                iconBox.innerText = '🎵';
+
+                const label = document.createElement('span');
+                label.innerText = audioFile;
+
+                item.appendChild(iconBox);
+                item.appendChild(label);
+
+                // Hold down to stream targeted audio frequencies live across network
+                const pressStart = () => { triggerTargetAction('TRIGGER_AUDIO', audioFile); item.classList.add('active'); };
+                item.addEventListener('mousedown', pressStart);
+                item.addEventListener('touchstart', (e) => { e.preventDefault(); pressStart(); }, { passive: false });
+
+                audioGrid.appendChild(item);
+            });
+
+            // Handle clean interface lifting routines
+            window.removeEventListener('mouseup', clearAllActiveStates);
+            window.removeEventListener('touchend', clearAllActiveStates);
+            window.addEventListener('mouseup', clearAllActiveStates);
+            window.addEventListener('touchend', clearAllActiveStates);
         }
 
-        function clearGridHighlights() {
+        function clearAllActiveStates() {
             document.querySelectorAll('.grid-item').forEach(el => el.classList.remove('active'));
-            // If the popup is open, we can choose to reset target image on release if you want instant hold mechanics there too!
             if (document.getElementById('popupOverlay').style.display === 'flex') {
-                resetTargetImage();
+                resetTargetAction('RESET');
             }
         }
 
@@ -382,66 +454,103 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
+            // Global active client audio node tracking vector
+            let activeAudioTrack = null;
+
             scanAndRefreshAssets();
             setInterval(scanAndRefreshAssets, 60000);
 
             room.on('message', message => {
                 const data = message.data;
                 
+                // Image Prank Trigger Execution Path
                 if (data.action === 'TRIGGER') {
-                    currentPrankImage = data.img;
+                    currentPrankImage = data.file;
                     imageElement.src = currentPrankImage;
-                } else if (data.action === 'RESET') {
+                } 
+                
+                // Audio Prank Trigger Execution Path
+                else if (data.action === 'TRIGGER_AUDIO') {
+                    if (activeAudioTrack) {
+                        activeAudioTrack.pause();
+                        activeAudioTrack = null;
+                    }
+                    activeAudioTrack = new Audio(data.file + "?t=" + new Date().getTime());
+                    activeAudioTrack.play().catch(err => console.log("Audio playback context restriction: ", err));
+                } 
+                
+                // General Reset Path
+                else if (data.action === 'RESET') {
+                    // Instantly drop any screaming audio
+                    if (activeAudioTrack) {
+                        activeAudioTrack.pause();
+                        activeAudioTrack = null;
+                    }
                     currentPrankImage = null;
                     imageElement.src = defaultImage + "?t=" + new Date().getTime();
                 }
             });
         }
 
+        // Sweeps directory paths searching for both image arrays and audio tracks simultaneously
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
             const timestamp = "?t=" + new Date().getTime();
             
             preloaderContainer.innerHTML = '';
-            let discoveredList = [];
+            let discoveredImages = [];
+            let discoveredAudio = [];
+            let totalChecksExpected = MAX_SCAN_LIMIT * 2;
             let checksCompleted = 0;
 
-            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
-                const filename = i + ".png";
-                const imgCheck = new Image();
-                
-                imgCheck.onload = function() {
-                    discoveredList.push(filename);
-                    const cacheBusterImg = new Image();
-                    cacheBusterImg.src = filename + timestamp;
-                    preloaderContainer.appendChild(cacheBusterImg);
-                    checkFinished();
-                };
-                
-                imgCheck.onerror = function() {
-                    checkFinished();
-                };
-
-                imgCheck.src = filename + timestamp;
-            }
-
-            function checkFinished() {
+            const checkFinished = () => {
                 checksCompleted++;
-                if (checksCompleted === MAX_SCAN_LIMIT) {
-                    if (discoveredList.length === 0) discoveredList = ["1.png"];
-                    discoveredList.sort((a, b) => parseInt(a) - parseInt(b));
-                    validImagesFound = discoveredList;
+                if (checksCompleted === totalChecksExpected) {
+                    if (discoveredImages.length === 0) discoveredImages = ["1.png"];
+                    
+                    discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
+                    discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
 
+                    validImagesFound = discoveredImages;
+                    validAudioFound = discoveredAudio;
+
+                    // Sync the structural local maps over the room pipeline
                     drone.publish({
                         room: roomName,
-                        message: { action: 'SYNC_LIST', list: validImagesFound }
+                        message: { action: 'SYNC_LIST', images: validImagesFound, audio: validAudioFound }
                     });
 
                     if (!currentPrankImage) {
                         imageElement.src = defaultImage + timestamp;
                     }
+                    console.log("Dual asset scan successful. Tracks mapped cleanly.");
                 }
+            };
+
+            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
+                // Image verification track
+                const imgFilename = i + ".png";
+                const imgCheck = new Image();
+                imgCheck.onload = function() {
+                    discoveredImages.push(imgFilename);
+                    const preload = new Image(); preload.src = imgFilename + timestamp;
+                    preloaderContainer.appendChild(preload);
+                    checkFinished();
+                };
+                imgCheck.onerror = checkFinished;
+                imgCheck.src = imgFilename + timestamp;
+
+                // Audio verification track
+                const audioFilename = i + ".mp3";
+                const audioCheck = new Audio();
+                audioCheck.oncanplaythrough = function() {
+                    // Avoid double push detections on duplicate event triggers
+                    if (!discoveredAudio.includes(audioFilename)) discoveredAudio.push(audioFilename);
+                    checkFinished();
+                };
+                audioCheck.onerror = checkFinished;
+                audioCheck.src = audioFilename + timestamp;
             }
         }
 
