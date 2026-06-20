@@ -578,30 +578,37 @@
             const imageElement = document.getElementById('memeImg');
             imageElement.src = BASE_URL + defaultImage;
 
-            let jumpscareTimeout = null;
-
-            scanAndRefreshAssets();
-            setInterval(scanAndRefreshAssets, 45000);
+            let jumpscareAudioTimeout = null;
+            let strobeDelayTimeout = null;
 
             const stopAllAudioAndEffects = () => {
                 jumpscareTrack.pause();
                 currentJumpscarePhase = 0;
                 if (gainNode) gainNode.gain.value = 1.0; 
                 if (flexibleAudioTrack) { flexibleAudioTrack.pause(); flexibleAudioTrack = null; }
-                if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
+                if (jumpscareAudioTimeout) { clearTimeout(jumpscareAudioTimeout); jumpscareAudioTimeout = null; }
+                if (strobeDelayTimeout) { clearTimeout(strobeDelayTimeout); strobeDelayTimeout = null; }
                 document.getElementById('strobeOverlay').classList.remove('active');
             };
 
             jumpscareTrack.onended = function() {
                 const timestamp = "?t=" + new Date().getTime();
                 if (currentJumpscarePhase === 5) {
-                    jumpscareTimeout = setTimeout(() => {
+                    // Start 4.mp3 IMMEDIATELY when phase 5 finishes
+                    jumpscareAudioTimeout = setTimeout(() => {
                         currentJumpscarePhase = 4;
-                        document.getElementById('strobeOverlay').classList.add('active');
                         if (gainNode) gainNode.gain.value = 5.0; 
                         jumpscareTrack.src = BASE_URL + "4.mp3" + timestamp;
                         jumpscareTrack.play().catch(e => console.log(e));
                     }, 1000);
+
+                    // DELAY the strobe lights by exactly half a second (1000ms + 500ms delay)
+                    strobeDelayTimeout = setTimeout(() => {
+                        if (currentJumpscarePhase === 4) {
+                            document.getElementById('strobeOverlay').classList.add('active');
+                        }
+                    }, 1500);
+
                 } else if (currentJumpscarePhase === 4) {
                     document.getElementById('strobeOverlay').classList.remove('active');
                     if (gainNode) gainNode.gain.value = 1.0; 
@@ -663,6 +670,7 @@
             });
         }
 
+        // Assets Scanner
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
