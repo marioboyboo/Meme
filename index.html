@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
-    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -283,7 +282,6 @@
 </head>
 <body>
 
-    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -292,19 +290,16 @@
         </div>
     </div>
 
-    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
         <p class="status-text">Hold down PRANK for random, or open the vault to pick items</p>
     </div>
 
-    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
-            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -324,7 +319,6 @@
         </div>
     </div>
 
-    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
@@ -333,19 +327,20 @@
 
     <script>
         const MAX_SCAN_LIMIT = 100; 
+        const BATCH_SIZE = 10; // Number of simultaneous network checks allowed at one time
         const defaultImage = "meme.jpg";
 
         const drone = new Scaledrone('ObXNBHan6Vjhwfha'); 
         const roomName = 'observable-meme-room';
         let room;
 
-        let validImagesFound = ["1.png"]; 
+        let validImagesFound = []; 
         let validAudioFound = []; 
         let currentPrankImage = null;
 
-        // Independent State Trackers for Dual-Channel Execution
         let currentStickyImg = null;
         let currentStickyAudio = null;
+        let isScanning = false;
 
         function initRole(role) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -370,10 +365,12 @@
                 }
             });
 
-            // Random big button handles both states symmetrically
+            triggerTargetAction('REQUEST_SYNC', true);
+
             const startPrank = (e) => {
                 if (e) e.preventDefault();
                 if (currentStickyImg) return;
+                if (validImagesFound.length === 0) return;
                 const randomIndex = Math.floor(Math.random() * validImagesFound.length);
                 triggerTargetAction('TRIGGER', validImagesFound[randomIndex]);
             };
@@ -457,11 +454,11 @@
         function openPopup() {
             buildPopupGrids();
             document.getElementById('popupOverlay').style.display = 'flex';
+            triggerTargetAction('REQUEST_SYNC', true);
         }
 
         function closePopup() {
             document.getElementById('popupOverlay').style.display = 'none';
-            clearAllLocks();
         }
 
         function buildPopupGrids() {
@@ -518,7 +515,7 @@
 
             const pressStart = (e) => {
                 if (e) e.preventDefault();
-                if (getStickyState()) return; // Block hold adjustments if locked
+                if (getStickyState()) return; 
                 touchActive = true;
                 element.classList.add('active');
                 triggerTargetAction(type, file);
@@ -570,8 +567,10 @@
             room.on('message', message => {
                 const data = message.data;
                 
-                // Image Processing Path
-                if (data.action === 'TRIGGER') {
+                if (data.action === 'REQUEST_SYNC') {
+                    scanAndRefreshAssets();
+                }
+                else if (data.action === 'TRIGGER') {
                     currentPrankImage = data.file;
                     imageElement.src = currentPrankImage;
                 } 
@@ -579,8 +578,6 @@
                     currentPrankImage = null;
                     imageElement.src = defaultImage + "?t=" + new Date().getTime();
                 }
-                
-                // Audio Processing Path
                 else if (data.action === 'TRIGGER_AUDIO') {
                     if (activeAudioTrack) {
                         activeAudioTrack.pause();
@@ -594,8 +591,6 @@
                         activeAudioTrack = null;
                     }
                 }
-                
-                // Wipe channels simultaneously
                 else if (data.action === 'RESET_ALL') {
                     if (activeAudioTrack) {
                         activeAudioTrack.pause();
@@ -607,7 +602,11 @@
             });
         }
 
+        // Safe Batch-by-Batch Scanner to prevent browsers dropping requests
         function scanAndRefreshAssets() {
+            if (isScanning) return;
+            isScanning = true;
+
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
             const timestamp = "?t=" + new Date().getTime();
@@ -615,12 +614,12 @@
             preloaderContainer.innerHTML = '';
             let discoveredImages = [];
             let discoveredAudio = [];
-            let totalChecksExpected = MAX_SCAN_LIMIT * 2;
-            let checksCompleted = 0;
+            
+            let currentIndex = 1;
 
-            const checkFinished = () => {
-                checksCompleted++;
-                if (checksCompleted === totalChecksExpected) {
+            function processNextBatch() {
+                if (currentIndex > MAX_SCAN_LIMIT) {
+                    // All 100 items checked safely! Wrap up.
                     if (discoveredImages.length === 0) discoveredImages = ["1.png"];
                     discoveredImages.sort((a, b) => parseInt(a) - parseInt(b));
                     discoveredAudio.sort((a, b) => parseInt(a) - parseInt(b));
@@ -633,33 +632,54 @@
                         message: { action: 'SYNC_LIST', images: validImagesFound, audio: validAudioFound }
                     });
 
-                    if (!currentPrankImage) {
+                    if (!currentPrankImage && imageElement) {
                         imageElement.src = defaultImage + timestamp;
                     }
+                    isScanning = false;
+                    return;
                 }
-            };
 
-            for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
-                const imgFilename = i + ".png";
-                const imgCheck = new Image();
-                imgCheck.onload = function() {
-                    discoveredImages.push(imgFilename);
-                    const preload = new Image(); preload.src = imgFilename + timestamp;
-                    preloaderContainer.appendChild(preload);
-                    checkFinished();
-                };
-                imgCheck.onerror = checkFinished;
-                imgCheck.src = imgFilename + timestamp;
+                let checksInThisBatch = 0;
+                let targetsExpected = 0;
 
-                const audioFilename = i + ".mp3";
-                const audioCheck = new Audio();
-                audioCheck.oncanplaythrough = function() {
-                    if (!discoveredAudio.includes(audioFilename)) discoveredAudio.push(audioFilename);
-                    checkFinished();
+                const onTargetChecked = () => {
+                    checksInThisBatch++;
+                    if (checksInThisBatch === targetsExpected) {
+                        currentIndex += BATCH_SIZE;
+                        processNextBatch(); // Move safely to the next group of 10
+                    }
                 };
-                audioCheck.onerror = checkFinished;
-                audioCheck.src = audioFilename + timestamp;
+
+                // Limit lookups to small safe ranges
+                let endLimit = Math.min(currentIndex + BATCH_SIZE - 1, MAX_SCAN_LIMIT);
+                targetsExpected = (endLimit - currentIndex + 1) * 2;
+
+                for (let i = currentIndex; i <= endLimit; i++) {
+                    // Check Image
+                    const imgFilename = i + ".png";
+                    const imgCheck = new Image();
+                    imgCheck.onload = function() {
+                        discoveredImages.push(imgFilename);
+                        const preload = new Image(); preload.src = imgFilename + timestamp;
+                        preloaderContainer.appendChild(preload);
+                        onTargetChecked();
+                    };
+                    imgCheck.onerror = onTargetChecked;
+                    imgCheck.src = imgFilename + timestamp;
+
+                    // Check Audio Track
+                    const audioFilename = i + ".mp3";
+                    const audioCheck = new Audio();
+                    audioCheck.oncanplaythrough = function() {
+                        if (!discoveredAudio.includes(audioFilename)) discoveredAudio.push(audioFilename);
+                        onTargetChecked();
+                    };
+                    audioCheck.onerror = onTargetChecked;
+                    audioCheck.src = audioFilename + timestamp;
+                }
             }
+
+            processNextBatch();
         }
 
         function toggleFullscreen() {
