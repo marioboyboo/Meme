@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
+    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -66,12 +67,12 @@
             justify-content: center;
             align-items: center;
             background: #1e1e1e;
-            gap: 25px;
+            gap: 20px;
         }
 
         .prank-btn {
-            width: 200px;
-            height: 200px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
             border: none;
             background: #ff4500;
@@ -81,6 +82,23 @@
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
             -webkit-user-drag: none;
+        }
+
+        .jumpscare-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            background-color: #ff0000;
+            color: white;
+            border: 3px solid #fff;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+            transition: transform 0.1s ease;
+        }
+
+        .jumpscare-btn:active {
+            transform: scale(0.95);
         }
 
         .choose-btn {
@@ -261,6 +279,21 @@
             -webkit-user-drag: none;
         }
 
+        /* Dynamic Flashing System via Keyframes */
+        @keyframes flashEffect {
+            0% { background-color: #ff0000; }
+            50% { background-color: #ffffff; }
+            100% { background-color: #ff0000; }
+        }
+
+        .slave-view.flashing {
+            animation: flashEffect 0.1s infinite;
+        }
+
+        .slave-view.flashing .fullscreen-image {
+            opacity: 0.3; /* Low image visibility to intensify flashing lights */
+        }
+
         .fullscreen-toggle-btn {
             position: absolute;
             bottom: 20px;
@@ -282,6 +315,7 @@
 </head>
 <body>
 
+    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -290,16 +324,20 @@
         </div>
     </div>
 
+    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
+        <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
         <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
-        <p class="status-text">Hold down PRANK for random, or open the vault to pick items</p>
+        <p class="status-text">Hold down PRANK for random, use JUMPSCARE for the sequence, or open vault</p>
     </div>
 
+    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
+            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -319,6 +357,7 @@
         </div>
     </div>
 
+    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
@@ -387,6 +426,10 @@
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
 
             buildPopupGrids();
+        }
+
+        function triggerJumpscare() {
+            triggerTargetAction('START_JUMPSCARE', true);
         }
 
         function triggerTargetAction(actionType, assetName) {
@@ -553,7 +596,8 @@
 
         // --- DISPLAY CLIENT SYSTEM ---
         function setupSlave() {
-            document.getElementById('slaveView').style.display = 'block';
+            const slavePanel = document.getElementById('slaveView');
+            slavePanel.style.display = 'block';
             const imageElement = document.getElementById('memeImg');
             imageElement.src = defaultImage;
 
@@ -562,45 +606,73 @@
             scanAndRefreshAssets();
             setInterval(scanAndRefreshAssets, 45000);
 
+            const stopActiveAudio = () => {
+                if (activeAudioTrack) {
+                    activeAudioTrack.pause();
+                    activeAudioTrack.onended = null;
+                    activeAudioTrack = null;
+                }
+            };
+
             room.on('message', message => {
                 const data = message.data;
+                const timestamp = "?t=" + new Date().getTime();
                 
                 if (data.action === 'REQUEST_SYNC') {
                     scanAndRefreshAssets();
                 }
+                
+                // Jumpscare Sequence Execution Engine
+                else if (data.action === 'START_JUMPSCARE') {
+                    stopActiveAudio();
+                    slavePanel.classList.remove('flashing');
+
+                    // Step 1: Play 5.mp3 immediately
+                    activeAudioTrack = new Audio("5.mp3" + timestamp);
+                    activeAudioTrack.play().catch(err => console.log(err));
+
+                    // Step 2: Track end of 5.mp3
+                    activeAudioTrack.onended = function() {
+                        // Wait exactly 1 second
+                        setTimeout(() => {
+                            // Step 3: Start 4.mp3 and initiate red/white strobe
+                            slavePanel.classList.add('flashing');
+                            activeAudioTrack = new Audio("4.mp3" + timestamp);
+                            activeAudioTrack.play().catch(err => console.log(err));
+
+                            // Step 4: Clean up when sequence finishes completely
+                            activeAudioTrack.onended = function() {
+                                slavePanel.classList.remove('flashing');
+                            };
+                        }, 1000);
+                    };
+                }
+                
                 else if (data.action === 'TRIGGER') {
                     currentPrankImage = data.file;
                     imageElement.src = currentPrankImage;
                 } 
                 else if (data.action === 'RESET_IMAGE') {
                     currentPrankImage = null;
-                    imageElement.src = defaultImage + "?t=" + new Date().getTime();
+                    imageElement.src = defaultImage + timestamp;
                 }
                 else if (data.action === 'TRIGGER_AUDIO') {
-                    if (activeAudioTrack) {
-                        activeAudioTrack.pause();
-                    }
-                    activeAudioTrack = new Audio(data.file + "?t=" + new Date().getTime());
-                    activeAudioTrack.play().catch(err => console.log("Audio block bypass state handled:", err));
+                    stopActiveAudio();
+                    activeAudioTrack = new Audio(data.file + timestamp);
+                    activeAudioTrack.play().catch(err => console.log(err));
                 } 
                 else if (data.action === 'RESET_AUDIO') {
-                    if (activeAudioTrack) {
-                        activeAudioTrack.pause();
-                        activeAudioTrack = null;
-                    }
+                    stopActiveAudio();
                 }
                 else if (data.action === 'RESET_ALL') {
-                    if (activeAudioTrack) {
-                        activeAudioTrack.pause();
-                        activeAudioTrack = null;
-                    }
+                    stopActiveAudio();
+                    slavePanel.classList.remove('flashing');
                     currentPrankImage = null;
-                    imageElement.src = defaultImage + "?t=" + new Date().getTime();
+                    imageElement.src = defaultImage + timestamp;
                 }
             });
         }
 
-        // Lightweight, unblockable metadata scanner loop
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
@@ -635,7 +707,6 @@
             };
 
             for (let i = 1; i <= MAX_SCAN_LIMIT; i++) {
-                // Image Validation Pass
                 const imgFilename = i + ".png";
                 const imgCheck = new Image();
                 imgCheck.onload = function() {
@@ -647,10 +718,9 @@
                 imgCheck.onerror = checkFinished;
                 imgCheck.src = imgFilename + timestamp;
 
-                // Safe Unblocked Audio Validation Pass
                 const audioFilename = i + ".mp3";
                 const audioCheck = new Audio();
-                audioCheck.preload = "metadata"; // Prevents user interaction errors from stalling execution
+                audioCheck.preload = "metadata"; 
                 audioCheck.onloadedmetadata = function() {
                     discoveredAudio.push(audioFilename);
                     checkFinished();
