@@ -286,16 +286,19 @@
             animation: screenShakeLoop 0.15s infinite;
         }
 
+        /* Glitch with dynamic horizontal screen tearing slices */
         @keyframes glitchLoop {
-            0% { transform: translate(0,0) skewX(0deg); filter: hue-rotate(0deg) saturate(2); }
-            20% { transform: translate(-4px, 2px) skewX(4deg); filter: hue-rotate(90deg); }
-            40% { transform: translate(5px, -3px) skewX(-5deg); filter: hue-rotate(180deg) invert(0.1); }
-            60% { transform: translate(-2px, -2px) skewX(2deg); filter: hue-rotate(270deg); }
-            80% { transform: translate(4px, 4px) skewX(-2deg); filter: hue-rotate(360deg) saturate(3); }
-            100% { transform: translate(0,0) skewX(0deg); filter: hue-rotate(0deg) saturate(1); }
+            0% { transform: translate(0,0) skewX(0deg); filter: hue-rotate(0deg) saturate(2); clip-path: inset(0 0 0 0); }
+            15% { transform: translate(-15px, 4px) skewX(10deg); filter: hue-rotate(90deg); clip-path: inset(10% 0 65% 0); }
+            30% { transform: translate(18px, -8px) skewX(-12deg); filter: hue-rotate(180deg) invert(0.2); clip-path: inset(40% 0 20% 0); }
+            45% { transform: translate(-5px, 10px) skewX(3deg); filter: hue-rotate(45deg); clip-path: inset(70% 0 5% 0); }
+            60% { transform: translate(12px, -2px) skewX(-5deg); filter: hue-rotate(270deg); clip-path: inset(25% 0 50% 0); }
+            75% { transform: translate(-22px, -7px) skewX(15deg); filter: hue-rotate(320deg) saturate(3); clip-path: inset(55% 0 15% 0); }
+            90% { transform: translate(5px, 6px) skewX(-2deg); filter: hue-rotate(120deg); clip-path: inset(5% 0 80% 0); }
+            100% { transform: translate(0,0) skewX(0deg); filter: hue-rotate(0deg) saturate(1); clip-path: inset(0 0 0 0); }
         }
         .fx-glitch {
-            animation: glitchLoop 0.12s infinite;
+            animation: glitchLoop 0.08s infinite;
         }
 
         .blackout-overlay {
@@ -305,7 +308,7 @@
             opacity: 0;
             pointer-events: none;
             z-index: 60;
-            transition: opacity 0.4s ease; /* Controls the smooth fade time */
+            transition: opacity 0.4s ease;
         }
         .blackout-overlay.active {
             opacity: 1;
@@ -371,6 +374,7 @@
         <div class="action-button-row">
             <button id="shakeFxBtn" class="fx-btn" oncontextmenu="return false;">📳 SHAKE</button>
             <button id="glitchFxBtn" class="fx-btn" oncontextmenu="return false;">👾 GLITCH</button>
+            <button id="shakeGlitchFxBtn" class="fx-btn" oncontextmenu="return false;">💥 SHAKE & GLITCH</button>
             <button id="blackoutFxBtn" class="fx-btn" oncontextmenu="return false;">⚫ BLACKOUT</button>
         </div>
 
@@ -485,6 +489,7 @@
             // Setup Hold listeners for Momentary FX buttons
             setupMomentaryFxButton('shakeFxBtn', 'TRIGGER_FX', 'SHAKE', 'STOP_FX');
             setupMomentaryFxButton('glitchFxBtn', 'TRIGGER_FX', 'GLITCH', 'STOP_FX');
+            setupMomentaryFxButton('shakeGlitchFxBtn', 'TRIGGER_FX', 'BOTH', 'STOP_FX');
             setupMomentaryFxButton('blackoutFxBtn', 'TOGGLE_BLACKOUT', true, 'TOGGLE_BLACKOUT', false);
 
             buildPopupGrids();
@@ -768,6 +773,9 @@
                     imageElement.classList.remove('fx-shake', 'fx-glitch');
                     if (data.file === 'SHAKE') imageElement.classList.add('fx-shake');
                     if (data.file === 'GLITCH') imageElement.classList.add('fx-glitch');
+                    if (data.file === 'BOTH') {
+                        imageElement.classList.add('fx-shake', 'fx-glitch');
+                    }
                 }
                 else if (data.action === 'STOP_FX') {
                     imageElement.classList.remove('fx-shake', 'fx-glitch');
