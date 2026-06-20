@@ -265,7 +265,6 @@
             height: 100%;
             object-fit: cover;
             display: block;
-            transition: filter 0.1s ease;
         }
 
         /* --- FX Screen Animations --- */
@@ -286,23 +285,33 @@
             animation: screenShakeLoop 0.15s infinite;
         }
 
-        /* Severe faulty GPU hardware desync tearing simulation */
-        @keyframes glitchLoop {
-            0% { transform: translate(0,0); filter: hue-rotate(0deg) saturate(1.5); clip-path: inset(0 0 0 0); }
-            10% { transform: translate(-35px, 0); filter: hue-rotate(90deg); clip-path: inset(32% 0 65% 0); }
-            12% { transform: translate(45px, 0); filter: contrast(2); clip-path: inset(30% 0 20% 0); }
-            25% { transform: translate(0,0); clip-path: inset(0 0 0 0); }
-            38% { transform: translate(60px, 0); filter: invert(0.3); clip-path: inset(75% 0 10% 0); }
-            40% { transform: translate(-50px, 0); clip-path: inset(12% 0 85% 0); }
-            55% { transform: translate(0,0); }
-            65% { transform: translate(-40px, 0); filter: hue-rotate(180deg); clip-path: inset(50% 0 45% 0); }
-            68% { transform: translate(55px, 0); clip-path: inset(5% 0 92% 0); }
-            80% { transform: translate(0,0); }
-            90% { transform: translate(30px, 0); filter: saturate(3); clip-path: inset(88% 0 2% 0); }
-            100% { transform: translate(0,0); filter: hue-rotate(0deg); clip-path: inset(0 0 0 0); }
+        /* Severe faulty hardware display buffer desynchronization (Bad VSync Tearing) */
+        @keyframes hardwareTearingLoop {
+            0% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            6% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            7% { clip-path: inset(45% 0 0 0); transform: translateX(-12%); }
+            10% { clip-path: inset(45% 0 0 0); transform: translateX(8%); }
+            13% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            28% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            29% { clip-path: inset(0 0 35% 0); transform: translateX(15%); }
+            32% { clip-path: inset(0 0 35% 0); transform: translateX(-9%); }
+            35% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            52% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            53% { clip-path: inset(70% 0 0 0); transform: translateX(-18%); }
+            57% { clip-path: inset(20% 0 50% 0); transform: translateX(14%); }
+            61% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            78% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            79% { clip-path: inset(0 0 75% 0); transform: translateX(-10%); }
+            83% { clip-path: inset(40% 0 15% 0); transform: translateX(16%); }
+            86% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            94% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            95% { clip-path: inset(15% 0 60% 0); transform: translateX(-14%); }
+            98% { clip-path: inset(80% 0 0 0); transform: translateX(11%); }
+            100% { clip-path: inset(0 0 0 0); transform: translateX(0); }
         }
+
         .fx-glitch {
-            animation: glitchLoop 0.05s infinite; /* Accelerated loop for ultra-harsh desync artifacts */
+            animation: hardwareTearingLoop 0.4s infinite steps(1); /* Sharp steps eliminate transitional smoothing */
         }
 
         .blackout-overlay {
@@ -525,6 +534,7 @@
 
         function triggerJumpscare() { triggerTargetAction('START_JUMPSCARE', true); }
         function triggerBanana() { triggerTargetAction('START_BANANA', true); }
+        function triggerCampResponse() { triggerTargetAction('START_KUNGFU', true); }
         function triggerKungFu() { triggerTargetAction('START_KUNGFU', true); }
 
         function triggerTargetAction(actionType, assetName) {
@@ -551,7 +561,6 @@
 
             const timestamp = "?t=" + new Date().getTime();
 
-            // 1. Meme Images Layout
             imgGrid.innerHTML = '';
             validImagesFound.forEach(imgFile => {
                 const item = document.createElement('div');
@@ -566,7 +575,6 @@
                 imgGrid.appendChild(item);
             });
 
-            // 2. Sound Effects Layout
             audioGrid.innerHTML = '';
             validAudioFound.forEach(audioFile => {
                 const item = document.createElement('div');
@@ -582,7 +590,6 @@
                 audioGrid.appendChild(item);
             });
 
-            // 3. Music Songs Layout
             songGrid.innerHTML = '';
             validSongsFound.forEach(songFile => {
                 const item = document.createElement('div');
@@ -798,7 +805,6 @@
             });
         }
 
-        // Assets Scanner
         function scanAndRefreshAssets() {
             const preloaderContainer = document.getElementById('preloaderContainer');
             const imageElement = document.getElementById('memeImg');
