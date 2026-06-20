@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MemeVault - Remote Control</title>
-    <!-- Scaledrone Library -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         * {
@@ -320,7 +319,6 @@
 </head>
 <body>
 
-    <!-- Setup View -->
     <div id="setupScreen" class="setup-screen">
         <h1>Select View</h1>
         <div class="btn-group">
@@ -329,7 +327,6 @@
         </div>
     </div>
 
-    <!-- Host Controller View -->
     <div id="masterPanel" class="master-panel">
         <button id="prankBtn" class="prank-btn" oncontextmenu="return false;">PRANK</button>
         <button class="jumpscare-btn" onclick="triggerJumpscare()">⚡ JUMPSCARE</button>
@@ -337,12 +334,10 @@
         <p class="status-text">Hold down PRANK for random, use JUMPSCARE for the sequence, or open vault</p>
     </div>
 
-    <!-- Split-Screen Pop-Up Module -->
     <div id="popupOverlay" class="popup-overlay">
         <div class="popup-header">
             <button class="close-popup-btn" onclick="closePopup()">Close</button>
             
-            <!-- Universal Status Reset Bar -->
             <div id="statusBar" class="sticky-status-bar" onclick="clearAllLocks()">
                 Double-tap cards to Lock | Click here to Stop All
             </div>
@@ -362,7 +357,6 @@
         </div>
     </div>
 
-    <!-- Display Client View -->
     <div id="slaveView" class="slave-view">
         <div id="strobeOverlay" class="strobe-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
@@ -435,7 +429,11 @@
         }
 
         function triggerJumpscare() {
-            triggerTargetAction('START_JUMPSCARE', true);
+            // Include a unique ID timestamp token so Scaledrone forces a fresh execution thread event
+            drone.publish({
+                room: roomName,
+                message: { action: 'START_JUMPSCARE', instanceId: new Date().getTime() }
+            });
         }
 
         function triggerTargetAction(actionType, assetName) {
@@ -616,8 +614,18 @@
             setInterval(scanAndRefreshAssets, 45000);
 
             const stopAllAudioAndEffects = () => {
-                if (audioTrack1) { audioTrack1.pause(); audioTrack1 = null; }
-                if (audioTrack2) { audioTrack2.pause(); audioTrack2 = null; }
+                if (audioTrack1) { 
+                    audioTrack1.pause(); 
+                    audioTrack1.src = ""; // Flushes memory channel allocation
+                    audioTrack1.load();
+                    audioTrack1 = null; 
+                }
+                if (audioTrack2) { 
+                    audioTrack2.pause(); 
+                    audioTrack2.src = ""; // Flushes memory channel allocation
+                    audioTrack2.load();
+                    audioTrack2 = null; 
+                }
                 if (jumpscareTimeout) { clearTimeout(jumpscareTimeout); jumpscareTimeout = null; }
                 strobeLayer.classList.remove('active');
             };
@@ -633,22 +641,19 @@
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
 
-                    // INSTANT DUAL INTIALIZATION
-                    // Build both objects simultaneously right now so they load together perfectly
+                    // Instantly launch fresh execution
                     audioTrack1 = new Audio("5.mp3" + timestamp);
                     audioTrack2 = new Audio("4.mp3" + timestamp);
 
                     audioTrack1.preload = "auto";
                     audioTrack2.preload = "auto";
 
-                    // Fire track 1
-                    audioTrack1.play().catch(err => console.log(err));
+                    audioTrack1.play().catch(err => console.log("Audio 1 failure: ", err));
 
                     audioTrack1.onended = function() {
-                        // Safe 1-second interval transition
                         jumpscareTimeout = setTimeout(() => {
-                            strobeLayer.classList.add('active'); // Fire lights
-                            audioTrack2.play().catch(err => console.log(err)); // Fire track 2 instantly
+                            strobeLayer.classList.add('active');
+                            audioTrack2.play().catch(err => console.log("Audio 2 failure: ", err));
 
                             audioTrack2.onended = function() {
                                 strobeLayer.classList.remove('active');
