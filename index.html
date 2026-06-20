@@ -283,7 +283,7 @@
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 50; /* Forces overlay above the image layer */
+            z-index: 50; 
             pointer-events: none;
         }
 
@@ -603,6 +603,7 @@
             imageElement.src = defaultImage;
 
             let activeAudioTrack = null;
+            let prebufferedAudio4 = null; // Background stream memory slot
 
             scanAndRefreshAssets();
             setInterval(scanAndRefreshAssets, 45000);
@@ -612,6 +613,11 @@
                     activeAudioTrack.pause();
                     activeAudioTrack.onended = null;
                     activeAudioTrack = null;
+                }
+                if (prebufferedAudio4) {
+                    prebufferedAudio4.pause();
+                    prebufferedAudio4.onended = null;
+                    prebufferedAudio4 = null;
                 }
             };
 
@@ -628,20 +634,28 @@
                     stopActiveAudio();
                     strobeLayer.classList.remove('active');
 
-                    // Step 1: Play 5.mp3 immediately
+                    // 1. ADVANCED PRE-BUFFERING STATE
+                    // While 5.mp3 starts, immediately establish a full background buffer stream for 4.mp3
+                    prebufferedAudio4 = new Audio("4.mp3" + timestamp);
+                    prebufferedAudio4.preload = "auto";
+                    prebufferedAudio4.load(); // Forces immediate cache download block
+
+                    // Play 5.mp3 immediately
                     activeAudioTrack = new Audio("5.mp3" + timestamp);
                     activeAudioTrack.play().catch(err => console.log(err));
 
-                    // Step 2: Track end of 5.mp3
+                    // Track end of 5.mp3
                     activeAudioTrack.onended = function() {
                         // Wait exactly 1 second
                         setTimeout(() => {
-                            // Step 3: Start 4.mp3 and inject strobe class simultaneously
+                            // Turn on strobe overlay instantly
                             strobeLayer.classList.add('active');
-                            activeAudioTrack = new Audio("4.mp3" + timestamp);
+                            
+                            // Elevate prebuffered audio out of memory straight into execution loop
+                            activeAudioTrack = prebufferedAudio4;
                             activeAudioTrack.play().catch(err => console.log(err));
 
-                            // Step 4: Instantly hide strobe overlay the frame 4.mp3 stops
+                            // Clean up when sequence finishes completely
                             activeAudioTrack.onended = function() {
                                 strobeLayer.classList.remove('active');
                             };
