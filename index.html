@@ -594,15 +594,16 @@
             jumpscareTrack.onended = function() {
                 const timestamp = "?t=" + new Date().getTime();
                 if (currentJumpscarePhase === 5) {
-                    // Halved: Play 4.mp3 after exactly 0.5 seconds (500ms)
+                    // Play 4.mp3 after exactly 0.5 seconds (500ms)
                     jumpscareAudioTimeout = setTimeout(() => {
                         currentJumpscarePhase = 4;
+                        // Blast volume up for the scary part!
                         if (gainNode) gainNode.gain.value = 5.0; 
                         jumpscareTrack.src = BASE_URL + "4.mp3" + timestamp;
                         jumpscareTrack.play().catch(e => console.log(e));
                     }, 500);
 
-                    // Maintain visual separation: Strobe lights start 0.5s after 4.mp3 hits (500ms + 500ms)
+                    // Strobe lights start 0.5s after 4.mp3 hits (500ms + 500ms)
                     strobeDelayTimeout = setTimeout(() => {
                         if (currentJumpscarePhase === 4) {
                             document.getElementById('strobeOverlay').classList.add('active');
@@ -629,6 +630,13 @@
                 else if (data.action === 'START_JUMPSCARE') {
                     stopAllAudioAndEffects();
                     currentJumpscarePhase = 5;
+                    
+                    // Make sure the audio node is built first
+                    if (gainNode) {
+                        // Lower the volume of 5.mp3 down to 30% so it acts as a quiet buildup
+                        gainNode.gain.value = 0.3; 
+                    }
+                    
                     jumpscareTrack.src = BASE_URL + "5.mp3" + timestamp;
                     jumpscareTrack.play().catch(err => console.log(err));
                 }
