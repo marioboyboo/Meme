@@ -63,35 +63,35 @@
             width: 100%;
             height: 100%;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             background: #1e1e1e;
-            gap: 15px;
+            gap: 12px;
             overflow-y: auto;
-            padding: 20px 0;
+            padding: 15px 0;
         }
 
         .prank-btn {
-            width: 150px;
-            height: 150px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             border: none;
             background: #ff4500;
             color: white;
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
+            box-shadow: 0 8px 25px rgba(255, 69, 0, 0.4);
             flex-shrink: 0;
         }
 
         .section-label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: #888;
-            margin-top: 5px;
-            margin-bottom: -5px;
+            margin-top: 4px;
+            margin-bottom: 2px;
         }
 
         .action-button-row {
@@ -102,7 +102,7 @@
             max-width: 90%;
         }
 
-        .jumpscare-btn, .banana-btn, .kungfu-btn, .fx-btn {
+        .jumpscare-btn, .banana-btn, .kungfu-btn {
             padding: 12px 22px;
             font-size: 0.95rem;
             font-weight: bold;
@@ -115,12 +115,70 @@
         .jumpscare-btn { background-color: #ff0000; color: white; box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
         .banana-btn { background-color: #e6b800; color: #121212; box-shadow: 0 0 15px rgba(230, 184, 0, 0.6); }
         .kungfu-btn { background-color: #ffffff; color: #121212; border-color: #ff4500; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); }
-
-        /* FX Buttons styling */
-        .fx-btn { background-color: #222; color: #00ffcc; border-color: #333; }
-        .fx-btn:active, .fx-btn.active-hold { background-color: #00ffcc; color: #121212; border-color: #fff; box-shadow: 0 0 15px rgba(0, 255, 204, 0.6); }
-
         .jumpscare-btn:active, .banana-btn:active, .kungfu-btn:active { transform: scale(0.95); }
+
+        /* Sliders Panel Vertical Setup */
+        .sliders-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 30px;
+            background: #151515;
+            padding: 20px 30px;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            margin: 5px 0;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .slider-wrapper label {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #00ffcc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .slider-wrapper input[type="range"] {
+            -webkit-appearance: slider-vertical; /* Crucial native vertical declaration */
+            writing-mode: bt-lr; 
+            width: 16px;
+            height: 150px;
+            background: #252525;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .slider-wrapper input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #00ffcc;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+        }
+
+        .slider-wrapper input[type="range"]::-moz-range-thumb {
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 50%;
+            background: #00ffcc;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+        }
 
         .choose-btn {
             padding: 12px 30px;
@@ -134,11 +192,10 @@
             transition: all 0.2s ease;
             margin-top: 5px;
         }
-
         .choose-btn:hover { background-color: #444; border-color: #00ffcc; }
-        .status-text { color: #666; font-size: 0.85rem; text-align: center; max-width: 80%; }
+        .status-text { color: #666; font-size: 0.8rem; text-align: center; max-width: 80%; }
 
-        /* Vault Selection Pop-up Overlay */
+        /* Vault Popup Layout */
         .popup-overlay {
             display: none;
             position: absolute;
@@ -247,10 +304,9 @@
         }
         .audio-icon-box { background: #1b1b1b; color: #ff4500; }
         .song-icon-box { background: #112222; color: #00ffcc; }
-
         .grid-item span { font-size: 0.75rem; padding: 6px; color: #aaa; font-weight: bold; pointer-events: none; text-align: center; }
 
-        /* Display Panel View */
+        /* Display Panel Client View */
         .slave-view {
             display: none;
             width: 100%;
@@ -260,71 +316,67 @@
             overflow: hidden;
         }
 
+        :root {
+            --shake-intensity: 0px;
+            --glitch-intensity: 0%;
+            --static-opacity: 0;
+            --blackout-opacity: 0;
+        }
+
         .fullscreen-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
+            transform: translate(calc(var(--shake-intensity) * 1.5), calc(var(--shake-intensity) * -1.2));
         }
 
-        /* --- FX Screen Animations --- */
-        @keyframes screenShakeLoop {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            10% { transform: translate(-8px, 5px) rotate(-1deg); }
-            20% { transform: translate(6px, -4px) rotate(1deg); }
-            30% { transform: translate(-5px, 2px) rotate(0deg); }
-            40% { transform: translate(7px, 6px) rotate(1deg); }
-            50% { transform: translate(-6px, -5px) rotate(-1deg); }
-            60% { transform: translate(8px, 2px) rotate(0deg); }
-            70% { transform: translate(-4px, 5px) rotate(1deg); }
-            80% { transform: translate(5px, -6px) rotate(-1deg); }
-            90% { transform: translate(-7px, -2px) rotate(1deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
+        /* --- GPU Dynamic Artifact Elements --- */
+        .transparent-static-layer {
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background-image: 
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 2px),
+                repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 2px, transparent 2px, transparent 4px);
+            opacity: var(--static-opacity);
+            z-index: 45;
+            pointer-events: none;
         }
-        .fx-shake {
-            animation: screenShakeLoop 0.15s infinite;
+        
+        .fx-glitch-active .transparent-static-layer {
+            animation: staticShiftLoop 0.04s infinite steps(2);
         }
 
-        /* Severe faulty hardware display buffer desynchronization (Bad VSync Tearing) */
-        @keyframes hardwareTearingLoop {
+        @keyframes staticShiftLoop {
+            0% { transform: translate(10px, -5px) scale(1); filter: hue-rotate(0deg); }
+            50% { transform: translate(-15px, 12px) scale(1.05); filter: hue-rotate(180deg) contrast(1.5); }
+            100% { transform: translate(5px, 8px) scale(0.98); filter: hue-rotate(360deg); }
+        }
+
+        @keyframes dynamicHardwareTear {
             0% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            6% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            7% { clip-path: inset(45% 0 0 0); transform: translateX(-12%); }
-            10% { clip-path: inset(45% 0 0 0); transform: translateX(8%); }
-            13% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            28% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            29% { clip-path: inset(0 0 35% 0); transform: translateX(15%); }
-            32% { clip-path: inset(0 0 35% 0); transform: translateX(-9%); }
-            35% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            52% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            53% { clip-path: inset(70% 0 0 0); transform: translateX(-18%); }
-            57% { clip-path: inset(20% 0 50% 0); transform: translateX(14%); }
-            61% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            78% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            79% { clip-path: inset(0 0 75% 0); transform: translateX(-10%); }
-            83% { clip-path: inset(40% 0 15% 0); transform: translateX(16%); }
-            86% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            12% { clip-path: inset(20% 0 65% 0); transform: translateX(calc(var(--glitch-intensity) * -0.5)); }
+            14% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            35% { clip-path: inset(75% 0 5% 0); transform: translateX(calc(var(--glitch-intensity) * 0.7)); }
+            38% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            62% { clip-path: inset(40% 0 45% 0); transform: translateX(calc(var(--glitch-intensity) * -0.9)); }
+            66% { clip-path: inset(10% 0 85% 0); transform: translateX(calc(var(--glitch-intensity) * 0.4)); }
+            70% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+            90% { clip-path: inset(88% 0 1% 0); transform: translateX(calc(var(--glitch-intensity) * 1.2)); }
             94% { clip-path: inset(0 0 0 0); transform: translateX(0); }
-            95% { clip-path: inset(15% 0 60% 0); transform: translateX(-14%); }
-            98% { clip-path: inset(80% 0 0 0); transform: translateX(11%); }
-            100% { clip-path: inset(0 0 0 0); transform: translateX(0); }
         }
 
-        .fx-glitch {
-            animation: hardwareTearingLoop 0.4s infinite steps(1); /* Sharp steps eliminate transitional smoothing */
+        .fx-tearing-active {
+            animation: dynamicHardwareTear 0.08s infinite steps(1);
         }
 
-        .blackout-overlay {
+        .blackout-slider-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background-color: black;
-            opacity: 0;
+            opacity: var(--blackout-opacity);
             pointer-events: none;
             z-index: 60;
-            transition: opacity 0.4s ease;
-        }
-        .blackout-overlay.active {
-            opacity: 1;
         }
 
         .strobe-overlay {
@@ -383,16 +435,24 @@
             <button class="kungfu-btn" onclick="triggerKungFu()">🥋 KUNG FU</button>
         </div>
 
-        <div class="section-label">Screen Effects</div>
-        <div class="action-button-row">
-            <button id="shakeFxBtn" class="fx-btn" oncontextmenu="return false;">📳 SHAKE</button>
-            <button id="glitchFxBtn" class="fx-btn" oncontextmenu="return false;">👾 GLITCH</button>
-            <button id="shakeGlitchFxBtn" class="fx-btn" oncontextmenu="return false;">💥 SHAKE & GLITCH</button>
-            <button id="blackoutFxBtn" class="fx-btn" oncontextmenu="return false;">⚫ BLACKOUT</button>
+        <div class="section-label">Live Mixing Desk</div>
+        <div class="sliders-container">
+            <div class="slider-wrapper">
+                <label for="shakeSlider">Shake</label>
+                <input type="range" id="shakeSlider" min="0" max="25" value="0" step="1" oninput="sendSliderUpdate('SHAKE', this.value)">
+            </div>
+            <div class="slider-wrapper">
+                <label for="glitchSlider">Glitch</label>
+                <input type="range" id="glitchSlider" min="0" max="100" value="0" step="1" oninput="sendSliderUpdate('GLITCH', this.value)">
+            </div>
+            <div class="slider-wrapper">
+                <label for="blackoutSlider">Darkness</label>
+                <input type="range" id="blackoutSlider" min="0" max="100" value="0" step="1" oninput="sendSliderUpdate('BLACKOUT', this.value)">
+            </div>
         </div>
 
         <button class="choose-btn" onclick="openPopup()">📁 CHOOSE MEME / AUDIO</button>
-        <p class="status-text">Hold down PRANK for random, use buttons for events, or open vault</p>
+        <p class="status-text">Hold PRANK for random loops. Adjust vertical slider elements for raw hardware noise.</p>
     </div>
 
     <div id="popupOverlay" class="popup-overlay">
@@ -420,7 +480,8 @@
 
     <div id="slaveView" class="slave-view">
         <div id="strobeOverlay" class="strobe-overlay"></div>
-        <div id="blackoutOverlay" class="blackout-overlay"></div>
+        <div id="transparentStatic" class="transparent-static-layer"></div>
+        <div id="sliderBlackout" class="blackout-slider-overlay"></div>
         <img id="memeImg" src="" alt="Display Screen" class="fullscreen-image" oncontextmenu="return false;">
         <div id="preloaderContainer"></div>
         <button class="fullscreen-toggle-btn" onclick="toggleFullscreen(event)">⛶ Fullscreen</button>
@@ -479,7 +540,6 @@
 
             triggerTargetAction('REQUEST_SYNC', true);
 
-            // PRANK Hold down Setup
             const startPrank = (e) => {
                 if (e) e.preventDefault();
                 if (currentStickyImg) return;
@@ -499,42 +559,15 @@
             prankBtn.addEventListener('touchend', stopPrank, { passive: false });
             prankBtn.addEventListener('touchcancel', stopPrank, { passive: false });
 
-            // Setup Hold listeners for Momentary FX buttons
-            setupMomentaryFxButton('shakeFxBtn', 'TRIGGER_FX', 'SHAKE', 'STOP_FX');
-            setupMomentaryFxButton('glitchFxBtn', 'TRIGGER_FX', 'GLITCH', 'STOP_FX');
-            setupMomentaryFxButton('shakeGlitchFxBtn', 'TRIGGER_FX', 'BOTH', 'STOP_FX');
-            setupMomentaryFxButton('blackoutFxBtn', 'TOGGLE_BLACKOUT', true, 'TOGGLE_BLACKOUT', false);
-
             buildPopupGrids();
         }
 
-        function setupMomentaryFxButton(buttonId, startAction, startFile, stopAction, stopFile = null) {
-            const btn = document.getElementById(buttonId);
-            if (!btn) return;
-
-            const onPressStart = (e) => {
-                if (e) e.preventDefault();
-                btn.classList.add('active-hold');
-                drone.publish({ room: roomName, message: { action: startAction, file: startFile } });
-            };
-
-            const onPressEnd = (e) => {
-                if (e) e.preventDefault();
-                btn.classList.remove('active-hold');
-                drone.publish({ room: roomName, message: { action: stopAction, file: stopFile } });
-            };
-
-            btn.addEventListener('mousedown', onPressStart);
-            btn.addEventListener('mouseup', onPressEnd);
-            btn.addEventListener('mouseleave', onPressEnd);
-            btn.addEventListener('touchstart', onPressStart, { passive: false });
-            btn.addEventListener('touchend', onPressEnd, { passive: false });
-            btn.addEventListener('touchcancel', onPressEnd, { passive: false });
+        function sendSliderUpdate(fxType, val) {
+            drone.publish({ room: roomName, message: { action: 'SLIDER_MIX', fx: fxType, value: parseInt(val, 10) } });
         }
 
         function triggerJumpscare() { triggerTargetAction('START_JUMPSCARE', true); }
         function triggerBanana() { triggerTargetAction('START_BANANA', true); }
-        function triggerCampResponse() { triggerTargetAction('START_KUNGFU', true); }
         function triggerKungFu() { triggerTargetAction('START_KUNGFU', true); }
 
         function triggerTargetAction(actionType, assetName) {
@@ -675,6 +708,12 @@
             currentStickySong = null;
             updateStatusBarUI();
             buildPopupGrids();
+            
+            // Re-zero horizontal tracks
+            if(document.getElementById('shakeSlider')) document.getElementById('shakeSlider').value = 0;
+            if(document.getElementById('glitchSlider')) document.getElementById('glitchSlider').value = 0;
+            if(document.getElementById('blackoutSlider')) document.getElementById('blackoutSlider').value = 0;
+            
             resetTargetAction('RESET_ALL');
         }
 
@@ -707,7 +746,6 @@
                 if (jumpscareAudioTimeout) { clearTimeout(jumpscareAudioTimeout); jumpscareAudioTimeout = null; }
                 if (strobeDelayTimeout) { clearTimeout(strobeDelayTimeout); strobeDelayTimeout = null; }
                 document.getElementById('strobeOverlay').classList.remove('active');
-                imageElement.classList.remove('fx-shake', 'fx-glitch');
             };
 
             jumpscareTrack.onended = function() {
@@ -780,26 +818,46 @@
                 else if (data.action === 'RESET_AUDIO') {
                     stopAllAudioAndEffects();
                 }
-                else if (data.action === 'TRIGGER_FX') {
-                    imageElement.classList.remove('fx-shake', 'fx-glitch');
-                    if (data.file === 'SHAKE') imageElement.classList.add('fx-shake');
-                    if (data.file === 'GLITCH') imageElement.classList.add('fx-glitch');
-                    if (data.file === 'BOTH') {
-                        imageElement.classList.add('fx-shake', 'fx-glitch');
+                else if (data.action === 'SLIDER_MIX') {
+                    const root = document.documentElement;
+                    const view = document.getElementById('slaveView');
+                    
+                    if (data.fx === 'SHAKE') {
+                        let shakeValue = parseInt(data.value, 10);
+                        root.style.setProperty('--shake-intensity', shakeValue + 'px');
+                    } 
+                    else if (data.fx === 'GLITCH') {
+                        let percentValue = parseInt(data.value, 10);
+                        root.style.setProperty('--glitch-intensity', percentValue + '%');
+                        
+                        let transparentAlpha = (percentValue / 100) * 0.45; 
+                        root.style.setProperty('--static-opacity', transparentAlpha);
+                        
+                        if (percentValue > 0) {
+                            imageElement.classList.add('fx-tearing-active');
+                            view.classList.add('fx-glitch-active');
+                        } else {
+                            imageElement.classList.remove('fx-tearing-active');
+                            view.classList.remove('fx-glitch-active');
+                        }
+                    } 
+                    else if (data.fx === 'BLACKOUT') {
+                        let alphaValue = parseInt(data.value, 10) / 100;
+                        root.style.setProperty('--blackout-opacity', alphaValue);
                     }
-                }
-                else if (data.action === 'STOP_FX') {
-                    imageElement.classList.remove('fx-shake', 'fx-glitch');
-                }
-                else if (data.action === 'TOGGLE_BLACKOUT') {
-                    const blackout = document.getElementById('blackoutOverlay');
-                    if(data.file === true) blackout.classList.add('active');
-                    else blackout.classList.remove('active');
                 }
                 else if (data.action === 'RESET_ALL') {
                     stopAllAudioAndEffects();
                     currentPrankImage = null;
-                    document.getElementById('blackoutOverlay').classList.remove('active');
+                    
+                    const root = document.documentElement;
+                    root.style.setProperty('--shake-intensity', '0px');
+                    root.style.setProperty('--glitch-intensity', '0%');
+                    root.style.setProperty('--static-opacity', '0');
+                    root.style.setProperty('--blackout-opacity', '0');
+                    
+                    imageElement.classList.remove('fx-tearing-active');
+                    document.getElementById('slaveView').classList.remove('fx-glitch-active');
                     imageElement.src = BASE_URL + defaultImage + timestamp;
                 }
             });
